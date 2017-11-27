@@ -1,0 +1,41 @@
+host: localhost:7199
+ssl: False
+user:
+password:
+listenPort: 8080
+blacklist:
+   # Leaf attributes not interesting for us but that are presents in many path
+   - .*/999thpercentile
+   - .*/95thpercentile
+   - .*/fifteenminuterate
+   - .*/fiveminuterate
+   - .*/durationunit
+   - .*/rateunit
+   - .*/stddev
+   - .*/meanrate
+   - .*/mean
+   - .*/min
+
+   # Path present in many metrics but uninterresting
+   - .*/viewlockacquiretime/.*
+   - .*/viewreadtime/.*
+   - .*/cas[a-z]+latency/.*
+   - .*/colupdatetimedeltahistogram/.*
+
+   # Mostly for RPC, do not scrap them
+   - org/apache/cassandra/db.*
+
+   # Should we export metrics for system keyspaces/tables ?
+   - org/apache/cassandra/metrics/[^/]+/system/.*
+   - org/apache/cassandra/metrics/[^/]+/system_schema/.*
+
+maxScrapFrequencyInMin:
+  1:
+    - .*
+
+  # Refresh those metrics only every hour as it is costly for cassandra to retrieve them
+  60:
+    - .*/snapshotssize/.*
+    - .*/estimated.*
+    - .*/totaldiskspaceused/.*
+

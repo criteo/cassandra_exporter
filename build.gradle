@@ -1,0 +1,50 @@
+group 'com.criteo.nosql'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+mainClassName = 'com.criteo.nosql.cassandra.exporter.Main'
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    // General utility
+    compile group: 'com.google.guava', name: 'guava', version: '22.0'
+
+    // Logging
+    compile  group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.21'
+
+    // YAML parser
+    compile  group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version:'2.8.9'
+    compile  group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.8.8'
+
+    // Prometheus
+    compile group: 'io.prometheus', name: 'simpleclient', version: '0.1.0'
+    compile group: 'io.prometheus', name: 'simpleclient_common', version: '0.1.0'
+    compile group: 'io.prometheus', name: 'simpleclient_httpserver', version: '0.1.0'
+}
+
+// If you don't use the uber jar
+jar {
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+}
+
+// In order to get maven shade equivalent plugin (Uber Jar)
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    }
+}
