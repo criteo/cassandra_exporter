@@ -49,8 +49,8 @@ public class JmxScraper {
         this.mBeanInfos = new ArrayList<>();
 
         scrapFrequencies.forEach((k, v) -> {
-            this.scrapFrequencies.put(k * 60 * 1000, v.stream().map(Pattern::compile).collect(toList()));
-            this.lastScrapes.put(k * 60 * 1000, 0L);
+            this.scrapFrequencies.put(k * 1000, v.stream().map(Pattern::compile).collect(toList()));
+            this.lastScrapes.put(k * 1000, 0L);
         });
 
         jmxEnv = new HashMap<>();
@@ -134,8 +134,8 @@ public class JmxScraper {
     }
 
     private String getMetricPath(ObjectName mbeanName, MBeanAttributeInfo attr) {
-        String properties = PATTERN.matcher(mbeanName.toString()).replaceAll("/").replace(' ', '_')
-                            + '/' + attr.getName();
+        String properties = PATTERN.matcher(mbeanName.toString()).replaceAll(":").replace(' ', '_')
+                            + ':' + attr.getName();
         return properties.toLowerCase();
     }
 

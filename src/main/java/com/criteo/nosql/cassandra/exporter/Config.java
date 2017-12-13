@@ -35,10 +35,10 @@ public final class Config {
     private int listenPort;
     private String user;
     private String password;
-    private SortedMap<Integer, List<String>> maxScrapFrequencyInMin;
+    private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
 
-    public SortedMap<Integer, List<String>> getMaxScrapFrequencyInMin() {
-        return maxScrapFrequencyInMin;
+    public SortedMap<Integer, List<String>> getMaxScrapFrequencyInSec() {
+        return maxScrapFrequencyInSec;
     }
 
     public Optional<String> getUser() {
