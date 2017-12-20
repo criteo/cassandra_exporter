@@ -171,8 +171,10 @@ public class JmxScraper {
 
             case "java.lang.Object":
                 String str = value.toString();
-                if (str.charAt(0) > '0' && str.charAt(0) < '9') {
+                if (str.charAt(0) >= '0' && str.charAt(0) <= '9') {
                     STATS.labels(mBeanInfo.metricName).set(Double.valueOf(value.toString()));
+                } else {
+                    logger.debug("Cannot parse {} as it as an unknown type {} with value {}", mBeanInfo.mBeanName, mBeanInfo.attribute.getType(), value);
                 }
                 break;
 
