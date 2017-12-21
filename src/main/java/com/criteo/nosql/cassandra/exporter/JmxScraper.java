@@ -90,7 +90,7 @@ public class JmxScraper {
 
 
                 lastScrapes.forEach((k,lastScrape) -> {
-                   if(now - lastScrape > k) lastScrapes.put(k, now);
+                    if (now - lastScrape >= k) lastScrapes.put(k, now);
                 });
 
                 final long duration = System.currentTimeMillis() - now;
@@ -111,7 +111,7 @@ public class JmxScraper {
         for(Map.Entry<Integer, List<Pattern>> e: scrapFrequencies.descendingMap().entrySet()) {
             for(Pattern p: e.getValue()) {
                 if(p.matcher(mBeanInfo.metricName).matches()) {
-                    return now - lastScrapes.get(e.getKey()) > e.getKey();
+                    return now - lastScrapes.get(e.getKey()) >= e.getKey();
                 }
             }
         }
@@ -171,8 +171,9 @@ public class JmxScraper {
 
             case "java.lang.Object":
                 String str = value.toString();
-                if (str.charAt(0) >= '0' && str.charAt(0) <= '9') {
-                    STATS.labels(mBeanInfo.metricName).set(Double.valueOf(value.toString()));
+                Character first = str.charAt(0);
+                if (first >= '0' && first <= '9') {
+                    STATS.labels(mBeanInfo.metricName).set(Double.valueOf(str));
                 } else {
                     logger.debug("Cannot parse {} as it as an unknown type {} with value {}", mBeanInfo.mBeanName, mBeanInfo.attribute.getType(), value);
                 }
