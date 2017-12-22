@@ -1,0 +1,277 @@
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+package com.criteo.nosql.cassandra.exporter;
+
+import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.Arrays;
+
+
+/* Copy/Pasted from  https://github.com/apache/cassandra/blob/trunk/src/java/org/apache/cassandra/utils/EstimatedHistogram.java */
+public class EstimatedHistogram {
+    /**
+     * The series of values to which the counts in `buckets` correspond:
+     * 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 17, 20, etc.
+     * Thus, a `buckets` of [0, 0, 1, 10] would mean we had seen one value of 3 and 10 values of 4.
+     * <p>
+     * The series starts at 1 and grows by 1.2 each time (rounding and removing duplicates). It goes from 1
+     * to around 36M by default (creating 90+1 buckets), which will give us timing resolution from microseconds to
+     * 36 seconds, with less precision as the numbers get larger.
+     * <p>
+     * Each bucket represents values from (previous bucket offset, current offset].
+     */
+    private final long[] bucketOffsets;
+
+    // buckets is one element longer than bucketOffsets -- the last element is values greater than the last offset
+    final AtomicLongArray buckets;
+
+    public EstimatedHistogram() {
+        this(90);
+    }
+
+    public EstimatedHistogram(int bucketCount) {
+        this(bucketCount, false);
+    }
+
+    public EstimatedHistogram(int bucketCount, boolean considerZeroes) {
+        bucketOffsets = newOffsets(bucketCount, considerZeroes);
+        buckets = new AtomicLongArray(bucketOffsets.length + 1);
+    }
+
+    /**
+     * Create EstimatedHistogram from only bucket data.
+     *
+     * @param bucketData bucket data
+     */
+    public EstimatedHistogram(long[] bucketData) {
+        assert bucketData != null && bucketData.length > 0 : "Bucket data must be an array of size more than 0";
+        bucketOffsets = newOffsets(bucketData.length - 1, false);
+        buckets = new AtomicLongArray(bucketData);
+    }
+
+    public EstimatedHistogram(long[] offsets, long[] bucketData) {
+        assert bucketData.length == offsets.length + 1;
+        bucketOffsets = offsets;
+        buckets = new AtomicLongArray(bucketData);
+    }
+
+    public static long[] newOffsets(int size, boolean considerZeroes) {
+        long[] result = new long[size + (considerZeroes ? 1 : 0)];
+        int i = 0;
+        if (considerZeroes)
+            result[i++] = 0;
+        long last = 1;
+        result[i++] = last;
+        for (; i < result.length; i++) {
+            long next = Math.round(last * 1.2);
+            if (next == last)
+                next++;
+            result[i] = next;
+            last = next;
+        }
+
+        return result;
+    }
+
+    /**
+     * @return the histogram values corresponding to each bucket index
+     */
+    public long[] getBucketOffsets() {
+        return bucketOffsets;
+    }
+
+    private int findIndex(long n) {
+        int index = Arrays.binarySearch(bucketOffsets, n);
+        if (index < 0) {
+            // inexact match, take the first bucket higher than n
+            index = -index - 1;
+        }
+        return index;
+    }
+
+    /**
+     * Increments the count of the bucket closest to n, rounding UP.
+     *
+     * @param n
+     */
+    public void add(long n) {
+        buckets.incrementAndGet(findIndex(n));
+    }
+
+    /**
+     * Increments the count of the bucket closest to n, rounding UP by delta
+     *
+     * @param n
+     */
+    public void add(long n, long delta) {
+        buckets.addAndGet(findIndex(n), delta);
+    }
+
+    /**
+     * @return the count in the given bucket
+     */
+    long get(int bucket) {
+        return buckets.get(bucket);
+    }
+
+    /**
+     * @param reset zero out buckets afterwards if true
+     * @return a long[] containing the current histogram buckets
+     */
+    public long[] getBuckets(boolean reset) {
+        final int len = buckets.length();
+        long[] rv = new long[len];
+
+        if (reset)
+            for (int i = 0; i < len; i++)
+                rv[i] = buckets.getAndSet(i, 0L);
+        else
+            for (int i = 0; i < len; i++)
+                rv[i] = buckets.get(i);
+
+        return rv;
+    }
+
+    /**
+     * @return the smallest value that could have been added to this histogram
+     */
+    public long min() {
+        for (int i = 0; i < buckets.length(); i++) {
+            if (buckets.get(i) > 0)
+                return i == 0 ? 0 : 1 + bucketOffsets[i - 1];
+        }
+        return 0;
+    }
+
+    /**
+     * @return the largest value that could have been added to this histogram.  If the histogram
+     * overflowed, returns Long.MAX_VALUE.
+     */
+    public long max() {
+        int lastBucket = buckets.length() - 1;
+        if (buckets.get(lastBucket) > 0)
+            return Long.MAX_VALUE;
+
+        for (int i = lastBucket - 1; i >= 0; i--) {
+            if (buckets.get(i) > 0)
+                return bucketOffsets[i];
+        }
+        return 0;
+    }
+
+    /**
+     * @param percentile
+     * @return estimated value at given percentile
+     */
+    public long percentile(double percentile) {
+        assert percentile >= 0 && percentile <= 1.0;
+        int lastBucket = buckets.length() - 1;
+        if (buckets.get(lastBucket) > 0)
+            throw new IllegalStateException("Unable to compute when histogram overflowed");
+
+        long pcount = (long) Math.ceil(count() * percentile);
+        if (pcount == 0)
+            return 0;
+
+        long elements = 0;
+        for (int i = 0; i < lastBucket; i++) {
+            elements += buckets.get(i);
+            if (elements >= pcount)
+                return bucketOffsets[i];
+        }
+        return 0;
+    }
+
+    /**
+     * @return the ceil of mean histogram value (average of bucket offsets, weighted by count)
+     * @throws IllegalStateException if any values were greater than the largest bucket threshold
+     */
+    public long mean() {
+        return (long) Math.ceil(rawMean());
+    }
+
+    /**
+     * @return the mean histogram value (average of bucket offsets, weighted by count)
+     * @throws IllegalStateException if any values were greater than the largest bucket threshold
+     */
+    public double rawMean() {
+        int lastBucket = buckets.length() - 1;
+        if (buckets.get(lastBucket) > 0)
+            throw new IllegalStateException("Unable to compute ceiling for max when histogram overflowed");
+
+        long elements = 0;
+        long sum = 0;
+        for (int i = 0; i < lastBucket; i++) {
+            long bCount = buckets.get(i);
+            elements += bCount;
+            sum += bCount * bucketOffsets[i];
+        }
+
+        return (double) sum / elements;
+    }
+
+    /**
+     * @return the total number of non-zero values
+     */
+    public long count() {
+        long sum = 0L;
+        for (int i = 0; i < buckets.length(); i++)
+            sum += buckets.get(i);
+        return sum;
+    }
+
+    /**
+     * @return the largest bucket offset
+     */
+    public long getLargestBucketOffset() {
+        return bucketOffsets[bucketOffsets.length - 1];
+    }
+
+    /**
+     * @return true if this histogram has overflowed -- that is, a value larger than our largest bucket could bound was added
+     */
+    public boolean isOverflowed() {
+        return buckets.get(buckets.length() - 1) > 0;
+    }
+
+    private static String nameOfRange(long[] bucketOffsets, int index) {
+        StringBuilder sb = new StringBuilder();
+        appendRange(sb, bucketOffsets, index);
+        return sb.toString();
+    }
+
+    private static void appendRange(StringBuilder sb, long[] bucketOffsets, int index) {
+        sb.append("[");
+        if (index == 0)
+            if (bucketOffsets[0] > 0)
+                // by original definition, this histogram is for values greater than zero only;
+                // if values of 0 or less are required, an entry of lb-1 must be inserted at the start
+                sb.append("1");
+            else
+                sb.append("-Inf");
+        else
+            sb.append(bucketOffsets[index - 1] + 1);
+        sb.append("..");
+        if (index == bucketOffsets.length)
+            sb.append("Inf");
+        else
+            sb.append(bucketOffsets[index]);
+        sb.append("]");
+    }
+}
+
