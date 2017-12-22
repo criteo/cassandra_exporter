@@ -36,6 +36,7 @@ public class JmxScraper {
     private final Map<Integer, Long> lastScrapes;
     private final List<MBeanInfo> mBeanInfos;
     private final Map<String, Object> jmxEnv;
+    private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
 
 
     public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies) {
@@ -172,18 +173,70 @@ public class JmxScraper {
             case "java.lang.Object":
                 String str = value.toString();
                 Character first = str.charAt(0);
+
+                //Most beans declared as Object are Double in disguise
                 if (first >= '0' && first <= '9') {
                     STATS.labels(mBeanInfo.metricName).set(Double.valueOf(str));
+
+                } else if (first == '[') {
+
+                    // This is ugly to redo the shouldScrap and metricName formating this late
+                    // but EstimatedHistogram in cassandra are special case that we cannot detect before :(
+                    double[] percentiles = metricPercentilesAsArray((long[]) value);
+                    for (int i = 0; i < offsetPercentiles.length; i++) {
+                        final String metricName = mBeanInfo.metricName.replace(":value", ":" + (int) (offsetPercentiles[i] * 100) + "thpercentile");
+                        MBeanInfo info = new MBeanInfo(metricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
+                        if (shouldScrap(info, start)) {
+                            STATS.labels(metricName).set(percentiles[i]);
+                        }
+                    }
+
+                    final String minMetricName = mBeanInfo.metricName.replace(":value", ":min");
+                    MBeanInfo info = new MBeanInfo(minMetricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
+                    if (shouldScrap(info, start)) {
+                        STATS.labels(minMetricName).set(percentiles[5]);
+                    }
+                    final String metricName = mBeanInfo.metricName.replace(":value", ":max");
+                    info = new MBeanInfo(metricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
+                    if (shouldScrap(info, start)) {
+                        STATS.labels(metricName).set(percentiles[6]);
+                    }
+
                 } else {
-                    logger.debug("Cannot parse {} as it as an unknown type {} with value {}", mBeanInfo.mBeanName, mBeanInfo.attribute.getType(), value);
+                    logger.info("Cannot parse {} as it as an unknown type {} with value {}", mBeanInfo.mBeanName, mBeanInfo.attribute.getType(), value);
                 }
                 break;
 
             default:
-                logger.debug("Cannot parse {} as it as an unknown type {} with value {}", mBeanInfo.mBeanName, mBeanInfo.attribute.getType(), value);
+                logger.info("Cannot parse {} as it as an unknown type {} with value {}", mBeanInfo.mBeanName, mBeanInfo.attribute.getType(), value);
                 break;
         }
         logger.trace("Scrapping took {}ms for {}", (System.currentTimeMillis() - start), mBeanInfo.metricName);
+    }
+
+    // Copy-pasted https://github.com/apache/cassandra/blob/f59df2893b66b3a8715b9792679e51815982a542/src/java/org/apache/cassandra/tools/NodeProbe.java#L1223
+    private static double[] metricPercentilesAsArray(long[] counts) {
+        double[] result = new double[7];
+
+        if (counts == null || counts.length == 0) {
+            Arrays.fill(result, Double.NaN);
+            return result;
+        }
+
+        long[] offsets = EstimatedHistogram.newOffsets(counts.length, false);
+        EstimatedHistogram metric = new EstimatedHistogram(offsets, counts);
+
+        if (metric.isOverflowed()) {
+            logger.error("EstimatedHistogram overflowed larger than {}, unable to calculate percentiles", offsets[offsets.length - 1]);
+            for (int i = 0; i < result.length; i++)
+                result[i] = Double.NaN;
+        } else {
+            for (int i = 0; i < offsetPercentiles.length; i++)
+                result[i] = metric.percentile(offsetPercentiles[i]);
+        }
+        result[5] = metric.min();
+        result[6] = metric.max();
+        return result;
     }
 
     private static class MBeanInfo {
