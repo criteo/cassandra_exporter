@@ -4,7 +4,12 @@ import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.*;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeType;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -26,6 +31,9 @@ public class JmxScraper {
             .labelNames("name")
             .register();
 
+    private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
+    private static final String metricSeparator = ":";
+
     private final String jmxUrl;
     private final Optional<String> username;
     private final Optional<String> password;
@@ -36,7 +44,6 @@ public class JmxScraper {
     private final Map<Integer, Long> lastScrapes;
     private final List<MBeanInfo> mBeanInfos;
     private final Map<String, Object> jmxEnv;
-    private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
 
 
     public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies) {
@@ -56,8 +63,8 @@ public class JmxScraper {
 
         jmxEnv = new HashMap<>();
         username.ifPresent(user -> {
-            String[] credent = new String[] {user, password.orElse("")};
-            jmxEnv.put(javax.management.remote.JMXConnector.CREDENTIALS, credent);
+            String[] credential = new String[]{user, password.orElse("")};
+            jmxEnv.put(javax.management.remote.JMXConnector.CREDENTIALS, credential);
         });
 
         if (ssl) {
@@ -80,7 +87,6 @@ public class JmxScraper {
 
             do {
                 final long now = System.currentTimeMillis();
-
                 for(ObjectInstance name: beanConn.queryMBeans(null, null)) {
                     collectMBeanInfos(beanConn, name.getObjectName());
                 }
@@ -135,17 +141,12 @@ public class JmxScraper {
     }
 
     private String getMetricPath(ObjectName mbeanName, MBeanAttributeInfo attr) {
-        String properties = PATTERN.matcher(mbeanName.toString()).replaceAll(":").replace(' ', '_')
-                            + ':' + attr.getName();
+        String properties = PATTERN.matcher(mbeanName.toString())
+                .replaceAll(metricSeparator)
+                .replace(' ', '_') + metricSeparator + attr.getName();
         return properties.toLowerCase();
     }
 
-    /**
-     * Recursive function for exporting the values of an mBean.
-     * JMX is a very open technology, without any prescribed way of declaring mBeans
-     * so this function tries to do a best-effort pass of getting the values/names
-     * out in a way it can be processed elsewhere easily.
-     */
     private void updateMetric(MBeanServerConnection beanConn, MBeanInfo mBeanInfo) {
 
         long start = System.currentTimeMillis();
@@ -168,6 +169,21 @@ public class JmxScraper {
 
             case "boolean":
                 STATS.labels(mBeanInfo.metricName).set(((Boolean) value) ? 1 : 0);
+                break;
+
+            case "javax.management.openmbean.CompositeData":
+                CompositeData data = ((CompositeData) value);
+                CompositeType types = ((CompositeData) value).getCompositeType();
+                for (String itemName : types.keySet()) {
+                    switch (types.getType(itemName).getTypeName()) {
+                        case "java.lang.Long":
+                        case "java.lang.Double":
+                        case "java.lang.Integer":
+                            STATS.labels(mBeanInfo.metricName + metricSeparator + itemName.toLowerCase())
+                                    .set(((Number) data.get(itemName)).doubleValue());
+                            break;
+                    }
+                }
                 break;
 
             case "java.lang.Object":
@@ -214,6 +230,7 @@ public class JmxScraper {
         logger.trace("Scrapping took {}ms for {}", (System.currentTimeMillis() - start), mBeanInfo.metricName);
     }
 
+
     // Copy-pasted https://github.com/apache/cassandra/blob/f59df2893b66b3a8715b9792679e51815982a542/src/java/org/apache/cassandra/tools/NodeProbe.java#L1223
     private static double[] metricPercentilesAsArray(long[] counts) {
         double[] result = new double[7];
@@ -251,70 +268,4 @@ public class JmxScraper {
         }
     }
 }
-
-//        if (value instanceof CompositeData) {
-//            logScrape(domain + beanProperties + attrName, "compositedata");
-//            CompositeData composite = (CompositeData) value;
-//            CompositeType type = composite.getCompositeType();
-//            attrKeys = new LinkedList<>(attrKeys);
-//            attrKeys.add(attrName);
-//            for(String key : type.keySet()) {
-//                String typ = type.getType(key).getTypeName();
-//                Object valu = composite.get(key);
-//                processBeanValue(
-//                        domain,
-//                        beanProperties,
-//                        attrKeys,
-//                        key,
-//                        typ,
-//                        type.getDescription(),
-//                        valu);
-//            }
-//        } else if (value instanceof TabularData) {
-//            // I don't pretend to have a good understanding of TabularData.
-//            // The real world usage doesn't appear to match how they were
-//            // meant to be used according to the docs. I've only seen them
-//            // used as 'key' 'value' pairs even when 'value' is itself a
-//            // CompositeData of multiple values.
-//            logScrape(domain + beanProperties + attrName, "tabulardata");
-//            TabularData tds = (TabularData) value;
-//            TabularType tt = tds.getTabularType();
-//
-//            List<String> rowKeys = tt.getIndexNames();
-//            LinkedHashMap<String, String> l2s = new LinkedHashMap<String, String>(beanProperties);
-//
-//            CompositeType type = tt.getRowType();
-//            Set<String> valueKeys = new TreeSet<String>(type.keySet());
-//            valueKeys.removeAll(rowKeys);
-//
-//            LinkedList<String> extendedAttrKeys = new LinkedList<String>(attrKeys);
-//            extendedAttrKeys.add(attrName);
-//            for (Object valu : tds.values()) {
-//                if (valu instanceof CompositeData) {
-//                    CompositeData composite = (CompositeData) valu;
-//                    for (String idx : rowKeys) {
-//                        l2s.put(idx, composite.get(idx).toString());
-//                    }
-//                    for(String valueIdx : valueKeys) {
-//                        LinkedList<String> attrNames = extendedAttrKeys;
-//                        String typ = type.getType(valueIdx).getTypeName();
-//                        String name = valueIdx;
-//                        if (valueIdx.toLowerCase().equals("value")) {
-//                            // Skip appending 'value' to the name
-//                            attrNames = attrKeys;
-//                            name = attrName;
-//                        }
-//                        processBeanValue(
-//                            domain,
-//                            l2s,
-//                            attrNames,
-//                            name,
-//                            typ,
-//                            type.getDescription(),
-//                            composite.get(valueIdx));
-//                    }
-//                } else {
-//                    logScrape(domain, "not a correct tabulardata format");
-//                }
-//            }
 
