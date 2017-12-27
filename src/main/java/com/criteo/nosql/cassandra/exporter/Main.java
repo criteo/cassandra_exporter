@@ -22,25 +22,20 @@ public class Main {
         }
 
         Config cfg = cfgO.get();
+        boolean isOneShot = Arrays.asList(args).contains("--oneshot");
         HTTPServer server = new HTTPServer(cfg.getListenPort());
-
-
         JmxScraper scrapper = new JmxScraper(String.format("service:jmx:rmi:///jndi/rmi://%s/jmxrmi", cfg.getHost()), cfg.getUser(), cfg.getPassword(), cfg.getSSL(), cfg.getBlacklist(), cfg.getMaxScrapFrequencyInSec());
 
-        boolean isOneShot = Arrays.asList(args).contains("--oneshot");
         if (isOneShot) {
             scrapper.run(false);
             System.exit(0);
-        } else {
-            try {
-                scrapper.run(true);
-            } catch (Exception e) {
-                logger.error("Scrapper stopped due to uncaught exception", e);
-            }
         }
 
-
-
+        try {
+            scrapper.run(true);
+        } catch (Exception e) {
+            logger.error("Scrapper stopped due to uncaught exception", e);
+        }
     }
 
 }
