@@ -35,9 +35,6 @@ public class JmxScraper {
     private static final String metricSeparator = ":";
 
     private final String jmxUrl;
-    private final Optional<String> username;
-    private final Optional<String> password;
-    private final boolean ssl;
     private final Pattern PATTERN = Pattern.compile("(:type=|,[^=]+=|\\.)");
     private final List<Pattern> blacklist;
     private final TreeMap<Integer, List<Pattern>> scrapFrequencies;
@@ -48,9 +45,6 @@ public class JmxScraper {
 
     public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies) {
         this.jmxUrl = jmxUrl;
-        this.username = username;
-        this.password = password;
-        this.ssl = ssl;
         this.blacklist = blacklist.stream().map(Pattern::compile).collect(toList());
         this.scrapFrequencies = new TreeMap<>();
         this.lastScrapes = new HashMap<>(scrapFrequencies.size());
