@@ -50,6 +50,9 @@ Cassandra Exporter will have the following behavior:
    1. Metric `b` will be scraped every hour
    1. Remaining metrics will be scrapped every 50s, here only `c`
 
+Once started the prometheus endpoint will be available at `localhost:listenPort/` or `localhost:listenPort/metrics` and metrics format will lookalike this one below
+
+> cassandra_stats{name="org:apache:cassandra:metrics:table:biggraphite:datapoints_5760p_3600s_aggr:writelatency:50thpercentile",} 35.425000000000004
 
 ## How to debug
 
