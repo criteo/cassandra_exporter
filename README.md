@@ -48,3 +48,15 @@ Cassandra Exporter will have the following behavior.
 1. In reverse order of frequency the metrics matching `maxScrapFrequencyInSec` will be scrapped
    1. Metric `b` will be scrapped every hour
    1. Remaining metrics will be scrapped every 50s, here only `c`
+
+
+### How to debug
+
+Run the program with the following options `java -Dorg.slf4j.simpleLogger.defaultLogLevel=trace -jar cassandra_exporter.jar config.yml --oneshot`.
+You will get the duration of how long it took to scrap individual MBean, this is useful to understand which metrics are expansive to scrap.
+
+Goods source of information in order to understand what Mbeans are doing is :
+ 1. https://cassandra.apache.org/doc/latest/operating/metrics.html
+ 1. https://github.com/apache/cassandra/tree/trunk/src/java/org/apache/cassandra/metrics
+ 1. http://thelastpickle.com/blog/2017/12/05/datadog-tlp-dashboards.html
+ 1. https://www.youtube.com/watch?v=Q9AAR4UQzMk
