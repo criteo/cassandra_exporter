@@ -1,5 +1,9 @@
 # Cassandra Exporter
 
+<p align="center">
+  <img src="https://github.com/criteo/cassandra_exporter/raw/master/logo.png" alt="logo"/>
+</p>
+
 ### Description
 
 Cassandra exporter is a standalone application made to export Cassandra metrics throught a prometheus endpoint.
