@@ -1,4 +1,4 @@
-# Cassandra Exporter
+# Cassandra Exporter <img src="https://travis-ci.org/criteo/cassandra_exporter.svg?branch=master" alt="travis badge"/>
 
 <p align="center">
   <img src="https://github.com/criteo/cassandra_exporter/raw/master/logo.png" alt="logo"/>
