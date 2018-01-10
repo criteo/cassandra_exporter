@@ -4,7 +4,7 @@
   <img src="https://github.com/criteo/cassandra_exporter/raw/master/logo.png" alt="logo"/>
 </p>
 
-### Description
+## Description
 
 Cassandra exporter is a standalone application made to export Cassandra metrics throught a prometheus endpoint.
 This project is at the base a fork of [JMX exporter](https://github.com/prometheus/jmx_exporter) but aims to an easier integration with Cassandra.
@@ -19,7 +19,7 @@ One contreversial choice the project makes, is to not let prometheus drives the 
 As we don't want this kind of situation to happen in production the scrap frequency is restricted via the configuration of Cassandra Exporter.
 
 
-### How to use
+## How to use
 
 To start the application `java -jar cassandra_exporter.jar config.yml`
 
@@ -50,13 +50,68 @@ Cassandra Exporter will have the following behavior.
    1. Remaining metrics will be scrapped every 50s, here only `c`
 
 
-### How to debug
+## How to debug
 
 Run the program with the following options `java -Dorg.slf4j.simpleLogger.defaultLogLevel=trace -jar cassandra_exporter.jar config.yml --oneshot`.
 You will get the duration of how long it took to scrap individual MBean, this is useful to understand which metrics are expansive to scrap.
 
-Goods source of information in order to understand what Mbeans are doing is :
+Goods source of information to understand what Mbeans are doing/create your dashboards are :
  1. https://cassandra.apache.org/doc/latest/operating/metrics.html
  1. https://github.com/apache/cassandra/tree/trunk/src/java/org/apache/cassandra/metrics
  1. http://thelastpickle.com/blog/2017/12/05/datadog-tlp-dashboards.html
  1. https://www.youtube.com/watch?v=Q9AAR4UQzMk
+
+
+## Config file example
+
+```yaml
+host: localhost:7199
+ssl: False
+user:
+password:
+listenPort: 8080
+blacklist:
+   # Unaccessible metrics (not enough privilege)
+   - java:lang:memorypool:.*usagethreshold.*
+
+   # Leaf attributes not interesting for us but that are presents in many path (reduce cardinality of metrics)
+   - .*:999thpercentile
+   - .*:95thpercentile
+   - .*:fifteenminuterate
+   - .*:fiveminuterate
+   - .*:durationunit
+   - .*:rateunit
+   - .*:stddev
+   - .*:meanrate
+   - .*:mean
+   - .*:min
+
+   # Path present in many metrics but uninterresting
+   - .*:viewlockacquiretime:.*
+   - .*:viewreadtime:.*
+   - .*:cas[a-z]+latency:.*
+   - .*:colupdatetimedeltahistogram:.*
+
+   # Mostly for RPC, do not scrap them
+   - org:apache:cassandra:db:.*
+
+   # columnfamily is an alias for Table metrics
+   # https://github.com/apache/cassandra/blob/8b3a60b9a7dbefeecc06bace617279612ec7092d/src/java/org/apache/cassandra/metrics/TableMetrics.java#L162
+   - org:apache:cassandra:metrics:columnfamily:.*
+
+   # Should we export metrics for system keyspaces/tables ?
+   - org:apache:cassandra:metrics:[^:]+:system[^:]*:.*
+
+   # Don't scrap us
+   - com:criteo:nosql:cassandra:exporter:.*
+
+maxScrapFrequencyInSec:
+  50:
+    - .*
+
+  # Refresh those metrics only every hour as it is costly for cassandra to retrieve them
+  3600:
+    - .*:snapshotssize:.*
+    - .*:estimated.*
+    - .*:totaldiskspaceused:.*
+```
