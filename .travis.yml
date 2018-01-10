@@ -1,0 +1,13 @@
+
+language: java
+dist: trusty
+script: gradle build
+deploy:
+  provider: releases
+  api_key:
+    secure: UA1VtkZK7lICLgoZQ5hNVvBZM/Wr7Da3m/6ocNqkv94uwRv0jUW2vB4pNmTuMAcJiySdQpsmT3RbXjygCAx6lha16mzoxsoJieMXocYji7p09r4iuqq/fUZg7hmDWGoqg5BHZWoJAGbvNv8mNrzKld88NaHUqB+U5KnOMZidji04d/DXfe6SebV02KAWqoECYSPdyqvNlH0VOvvFeUtQlV7OfqF0GICc8/MdeUb+pjazSQ74yd/ooK8Gxp1g0PnJITsfTHTsfg1jVqiRaKoXKxX/yrv4cRFEFtOtfHTsH+BJT+WkSx+zBStfA5qOF8kQKOHhKZjWVwsWmBgnmzTrjFuj5oZvekiIn2sZ/QkHwQDXwTUaYRIdYBbhO8jcstKDOOXeg3QyjUHfC5EhKv3YtX48jWOwtibGAjGdOplc8zXISS4M+w6JctQBcKn3z3v+zmIa5cD/cn3x663tao5ASzifvtoKP/lbJgP8g4Vcg/bHAoyXgBOEsBPeS+6kmkqgssE6XADfmpPWO2ZdDkxNyVDXFxlUXxejshFj0CrdulL7wbZR8lLqh647HPLB+vT4yXJXK50gdUTs3dOVv3zklNkgC9H6ZBxu0qkb7lPE1zZzagLSGnQYETXgH8ZNK91PwDwgYrSZ2K34SdOXughzjxIKJ0hOkhAQhIwz7UjOZ1A=
+  file_glob: true
+  file: build/libs/mewpoke*
+  skip_cleanup: true
+  on:
+tags: true
