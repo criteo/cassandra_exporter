@@ -21,7 +21,8 @@ As we don't want this kind of situation to happen in production the scrap freque
 
 ## How to use
 
-To start the application `java -jar cassandra_exporter.jar config.yml`
+To start the application 
+> java -jar cassandra_exporter.jar config.yml
 
 You can have a look at a full configuration file [here](https://github.com/criteo/cassandra_exporter/blob/master/config.yml)
 The 2 main parts are :
@@ -52,7 +53,9 @@ Cassandra Exporter will have the following behavior.
 
 ## How to debug
 
-Run the program with the following options `java -Dorg.slf4j.simpleLogger.defaultLogLevel=trace -jar cassandra_exporter.jar config.yml --oneshot`.
+Run the program with the following options 
+> java -Dorg.slf4j.simpleLogger.defaultLogLevel=trace -jar cassandra_exporter.jar config.yml --oneshot
+
 You will get the duration of how long it took to scrap individual MBean, this is useful to understand which metrics are expansive to scrap.
 
 Goods source of information to understand what Mbeans are doing/create your dashboards are :
