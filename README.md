@@ -6,16 +6,16 @@
 
 ## Description
 
-Cassandra exporter is a standalone application which exports Cassandra metrics throught a prometheus friendly endpoint.
-This project is originally a fork of [JMX exporter](https://github.com/prometheus/jmx_exporter) but aims at an easier integration with Cassandra.
+Cassandra exporter is a standalone application which exports [Apache Cassandra®](http://cassandra.apache.org/) metrics throught a prometheus friendly endpoint.
+This project is originally a fork of [JMX exporter](https://github.com/prometheus/jmx_exporter) but aims at an easier integration with [Apache Cassandra®](http://cassandra.apache.org/).
 
 Specifically, this project brings :
- - [x] Exporting EstimatedHistogram metrics specific to Cassandra
+ - [x] Exporting EstimatedHistogram metrics specific to [Apache Cassandra®](http://cassandra.apache.org/)
  - [x] Filtering on mbean's attributes
  - [x] Metrics naming that respect the mbean hierarchy
  - [x] Comprehensive config file
 
-An essential design choice the project makes is to not let prometheus drive the scraping frequency. This decision has been taken because a lot of Cassandra metrics are expensive to scrap and can hinder the performance of the node.
+An essential design choice the project makes is to not let prometheus drive the scraping frequency. This decision has been taken because a lot of [Apache Cassandra®](http://cassandra.apache.org/) metrics are expensive to scrap and can hinder the performance of the node.
 As we don't want this kind of situation to happen in production, the scrape frequency is restricted via the configuration of Cassandra Exporter.
 
 
