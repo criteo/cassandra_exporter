@@ -31,10 +31,18 @@ public class Main {
             System.exit(0);
         }
 
-        try {
-            scrapper.run(true);
-        } catch (Exception e) {
-            logger.error("Scrapper stopped due to uncaught exception", e);
+        for (; ; ) {
+            try {
+                scrapper.run(true);
+            } catch (Exception e) {
+                logger.error("Scrapper stopped due to uncaught exception", e);
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                System.exit(0);
+            }
         }
     }
 
