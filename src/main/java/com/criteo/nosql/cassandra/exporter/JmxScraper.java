@@ -100,6 +100,7 @@ public class JmxScraper {
 
     public void run(final boolean forever) throws Exception {
 
+        STATS.clear();
         try(JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
 
