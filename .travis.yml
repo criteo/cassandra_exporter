@@ -4,9 +4,16 @@ script: gradle build
 deploy:
   provider: releases
   api_key:
-    secure: fg/hC9YVkt9/dD6GQts0ml4NbsYjLLdCKS/gBXDw9JubMIHqNgn4hIuR7AYAcF+EMOPMbeUtePZX3awKm/UuMHrz+RkvfAHZQIdJHcGcZ1gscIhMobiI1NCIIEIxMwdo3o+9jcSzY4tpKMER8FSr/CMqRQRB5LmYJO/iY+CVHmkSmPrG2bFYZA97AqDqo8iCjsgj/JRlfFZRg7qp2lgwgitmc3XlbwngiXBq96W75OaSr06I4o00jmzw72up8IWK7iC6u55DsSgu+p9z9oPEIOUuYAMUIeo0C+zEKN9hZJJrIi4WrDT8GWoVgm0oPMOWynn3j1B9ArIEtItMJRKIvM3N77i9DtilNxXztGZQS0IVDQC0ejtUujsa1kxolKqbcUFfjTd7Mgsc56d20s8z8Ew0mgtRa7xPAwcwYFloFC2ZxCGTJoOH63jOXiOTB7sMKwvoHYyD1PDRp2h1Ev824Og6fI37UfdZ6Yz3G3y3uB9UPeGA3TNXsnzTOxEcJSW2PiVf90p3EqXdhb1g82sHyNbyUgjxorVHBpM+AaqkxipHtPbC3mk0Rahzoi1VItuJCWslZkLFwFZ0p96ronqulgANUWKlO5Y4HIfBRwrE46UFlRelWGoNpgKJKKnIDWJr3RRlOdPFlAuAPfwcex8DtD86wOb5c/z5lyWvjqdlPms=
+    secure: $API_KEY
   file_glob: true
   file: build/libs/cassandra_exporter*.jar
   skip_cleanup: true
   on:
     tags: true
+after_success:
+  - docker login -u $DOCKER_USER -p $DOCKER_PASS
+  - export REPO=criteord/cassandra_exporter
+  - export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH ; fi`
+  - cd docker; docker build -f Dockerfile -t $REPO:$TAG .
+  - docker tag $REPO:$TAG $REPO:latest
+  - docker push $REPO
