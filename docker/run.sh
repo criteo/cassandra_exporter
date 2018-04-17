@@ -2,18 +2,18 @@
 
 set -e
 
-export CASSANDRA_EXPORTER_host="${CASSANDRA_EXPORTER_host:-localhost:7199}"
-export CASSANDRA_EXPORTER_ssl="${CASSANDRA_EXPORTER_ssl:-False}"
-export CASSANDRA_EXPORTER_user="${CASSANDRA_EXPORTER_user}"
-export CASSANDRA_EXPORTER_password="${CASSANDRA_EXPORTER_password}"
-export CASSANDRA_EXPORTER_listenPort="${CASSANDRA_EXPORTER_listenPort:-8080}"
+export CASSANDRA_EXPORTER_CONFIG_host="${CASSANDRA_EXPORTER_CONFIG_host:-localhost:7199}"
+export CASSANDRA_EXPORTER_CONFIG_ssl="${CASSANDRA_EXPORTER_CONFIG_ssl:-False}"
+export CASSANDRA_EXPORTER_CONFIG_user="${CASSANDRA_EXPORTER_CONFIG_user}"
+export CASSANDRA_EXPORTER_CONFIG_password="${CASSANDRA_EXPORTER_CONFIG_password}"
+export CASSANDRA_EXPORTER_CONFIG_listenPort="${CASSANDRA_EXPORTER_CONFIG_listenPort:-8080}"
 
 echo "Starting Cassandra exporter"
 while IFS='=' read -r name value ; do
-  if [[ $name == 'CASSANDRA_EXPORTER_'* ]]; then
+  if [[ $name == 'CASSANDRA_EXPORTER_CONFIG_'* ]]; then
     val="${!name}"
     echo "$name $val"
-    field=$(echo $name | sed -r 's/CASSANDRA_EXPORTER_(.+)/\1/')
+    field=$(echo $name | sed -r 's/CASSANDRA_EXPORTER_CONFIG_(.+)/\1/')
     sed -ri "s/^($field):.*/\1: $val/" "/etc/cassandra_exporter/config.yml"
   fi
 done < <(env)

@@ -21,20 +21,20 @@ As we don't want this kind of situation to happen in production, the scrape freq
 
 ## How to use
 
-To start the application 
+To start the application
 > java -jar cassandra_exporter.jar config.yml
 
 You can have a look at a full configuration file [here](https://github.com/criteo/cassandra_exporter/blob/master/config.yml)
 The 2 main parts are :
  1. blacklist
  1. maxScrapFrequencyInSec
- 
+
 In the `blacklist` block, you specify the metrics you don't want the exporter to scrape. This is important as JMX is an RPC mechanism and you don't want to trigger some of those RPC. For example, mbeans endpoint from `org:apache:cassandra:db:.*` does not expose any metrics but are used to trigger actions on Cassandra's nodes.
 
 In the `maxScrapFrequencyInSec`, you specify the metrics you want to be scraped at which frequency.
 Basically, starting from the set of all mbeans, the blacklist is applied first to filter this set and then the `maxScrapFrequencyInSec` is applied as a whitelist to filter the resulting set.
 
-As an example, if we take as input set the metrics `{a, b, c}` and the config file is 
+As an example, if we take as input set the metrics `{a, b, c}` and the config file is
 ```yaml
 blacklist:
   - a
@@ -50,7 +50,7 @@ Cassandra Exporter will have the following behavior:
    1. Metric `b` will be scraped every hour
    1. Remaining metrics will be scrapped every 50s, here only `c`
 
-Resulting in : 
+Resulting in :
 
 Metric | Scrap Frequency
 ------ | -------------
@@ -129,4 +129,11 @@ maxScrapFrequencyInSec:
     - .*:snapshotssize:.*
     - .*:estimated.*
     - .*:totaldiskspaceused:.*
+```
+
+## Docker
+
+You can pull an image directly from [Dockerhub](https://hub.docker.com/r/criteord/cassandra_exporter/):
+```
+docker pull criteord/cassandra_exporter:latest
 ```
