@@ -106,7 +106,7 @@ public class JmxScraper {
 
             do {
                 final long now = System.currentTimeMillis();
-                beanConn.queryMBeans(null, null).stream()
+                beanConn.queryMBeans(null, null).parallelStream()
                         .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
                         .filter(m -> shouldScrap(m, now))
                         .forEach(mBean -> updateMetric(beanConn, mBean));
