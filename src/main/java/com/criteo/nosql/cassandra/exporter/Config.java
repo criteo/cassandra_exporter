@@ -33,6 +33,7 @@ public final class Config {
     private List<String> blacklist;
     private boolean ssl;
     private int listenPort;
+    private String listenAddress = "0.0.0.0";
     private String user;
     private String password;
     private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
@@ -49,6 +50,10 @@ public final class Config {
         return password == null ? Optional.empty() : Optional.of(password);
     }
 
+
+    public String getListenAddress() {
+        return listenAddress;
+    }
 
     public int getListenPort() {
         return listenPort;

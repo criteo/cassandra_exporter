@@ -23,7 +23,7 @@ public class Main {
 
         Config cfg = cfgO.get();
         boolean isOneShot = Arrays.asList(args).contains("--oneshot");
-        HTTPServer server = new HTTPServer(cfg.getListenPort());
+        HTTPServer server = new HTTPServer(cfg.getListenAddress(), cfg.getListenPort());
         JmxScraper scrapper = new JmxScraper(String.format("service:jmx:rmi:///jndi/rmi://%s/jmxrmi", cfg.getHost()), cfg.getUser(), cfg.getPassword(), cfg.getSSL(), cfg.getBlacklist(), cfg.getMaxScrapFrequencyInSec());
 
         if (isOneShot) {
