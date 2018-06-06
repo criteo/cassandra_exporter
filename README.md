@@ -18,6 +18,7 @@ Specifically, this project brings :
 An essential design choice the project makes is to not let prometheus drive the scraping frequency. This decision has been taken because a lot of [Apache Cassandra®](http://cassandra.apache.org/) metrics are expensive to scrap and can hinder the performance of the node.
 As we don't want this kind of situation to happen in production, the scrape frequency is restricted via the configuration of Cassandra Exporter.
 
+![Grafana](https://grafana.com/api/dashboards/6400/images/4111/image)
 
 ## How to use
 
@@ -139,3 +140,7 @@ You can pull an image directly from [Dockerhub](https://hub.docker.com/r/criteor
 ```
 docker pull criteord/cassandra_exporter:latest
 ```
+
+## Grafana
+
+Dedicated dashboards can be [found here](https://github.com/criteo/cassandra_exporter/tree/grafana/grafana)
