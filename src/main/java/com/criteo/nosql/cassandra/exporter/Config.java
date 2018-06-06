@@ -14,6 +14,15 @@ import java.util.SortedMap;
 public final class Config {
 
     public static final String DEFAULT_PATH = "config.yml";
+    private String host;
+    private List<String> blacklist;
+    private boolean ssl;
+    private int listenPort;
+    private String listenAddress = "0.0.0.0";
+    private String user;
+    private String password;
+    private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
+
     public static Optional<Config> fromFile(String filePath) {
         Logger logger = LoggerFactory.getLogger(Config.class);
         logger.info("Loading yaml config from {}", filePath);
@@ -29,15 +38,6 @@ public final class Config {
         }
     }
 
-    private String host;
-    private List<String> blacklist;
-    private boolean ssl;
-    private int listenPort;
-    private String listenAddress = "0.0.0.0";
-    private String user;
-    private String password;
-    private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
-
     public SortedMap<Integer, List<String>> getMaxScrapFrequencyInSec() {
         return maxScrapFrequencyInSec;
     }
@@ -49,7 +49,6 @@ public final class Config {
     public Optional<String> getPassword() {
         return password == null ? Optional.empty() : Optional.of(password);
     }
-
 
     public String getListenAddress() {
         return listenAddress;
