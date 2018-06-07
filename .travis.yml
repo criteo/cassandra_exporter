@@ -4,7 +4,7 @@ script: gradle build
 deploy:
   provider: releases
   api_key:
-    secure: $API_KEY
+    secure: CTnOuExnuZ+l+JI+HT6XcYCkojDgt9+BZdxQMOsfRXK7XGsHRAN0XnH57vG4eIxs2e3G+tqPuE0xcKFos1qBp8A1jhoQlNcSuGhQUfnsYbf6Argmd8RHofedpoXcWwLn4aMEjNQYRW6syU2w+EiHN3oIwoJ5u7/v3+puMNzMFsQS+fTd4WnJN94PMA32X0BjeA73O0VfND3rchGJUVgpe8iVspUvWlCqNadxfu62VeWuxKA/iRZ7HHKjt+Ld5+U+35P6+9Eb3rAWtDR0rcIldDozS011ffIKKbviPGI2NI9KEoHFu0aBnYimKCoLVAznnCHxClAKNwv7qXX/cdL91LBplQXKBRw9KbhpHrFGTFOF9Tn6GgetAMXroK40fTXQUTDEdvbaG6PwENwDVBZ1KpNKj8atZcaDMIuE21XSXCB5ghRt0XPFxhP+ssAoFwu9O0/SLLN55SqTBPIEIm+i+/B3BfdfInj50SEyP8Cfi6Vj0ZcK/2LaMtnGj1+mc9MUzb8kaFnXqIvTUc39QTpY51CNEXeOOCyWbo81bsMVVo8rdlmqEuGAxXH/s6gzABPAXju5QJihUC4RkrGgg7kv2i0RAZ8z6hPjAqBs5mcje9J89rriO6N3YvIRg1rq4lo2PGb8MAIGU71wT3/BV0x70bNLyuCGiD7ug6uwWzck4Jk=
   file_glob: true
   file: build/libs/cassandra_exporter*.jar
   skip_cleanup: true
