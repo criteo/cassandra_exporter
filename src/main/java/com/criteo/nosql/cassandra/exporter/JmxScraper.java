@@ -28,7 +28,7 @@ public class JmxScraper {
     static final Gauge STATS = Gauge.build()
             .name("cassandra_stats")
             .help("node stats")
-            .labelNames("name")
+            .labelNames("cluster", "name")
             .register();
 
     private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
@@ -103,13 +103,14 @@ public class JmxScraper {
         STATS.clear();
         try(JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
+            final String clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
 
             do {
                 final long now = System.currentTimeMillis();
                 beanConn.queryMBeans(null, null).stream()
                         .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
                         .filter(m -> shouldScrap(m, now))
-                        .forEach(mBean -> updateMetric(beanConn, mBean));
+                        .forEach(mBean -> updateMetric(beanConn, mBean, clusterName));
 
 
                 lastScrapes.forEach((k,lastScrape) -> {
@@ -185,8 +186,7 @@ public class JmxScraper {
      * @param beanConn
      * @param mBeanInfo
      */
-    private void updateMetric(MBeanServerConnection beanConn, MBeanInfo mBeanInfo) {
-
+    private void updateMetric(MBeanServerConnection beanConn, MBeanInfo mBeanInfo, String clusterName) {
         long start = System.currentTimeMillis();
         Object value = null;
         try {
@@ -203,11 +203,11 @@ public class JmxScraper {
             case "long":
             case "int":
             case "double":
-                STATS.labels(mBeanInfo.metricName).set(((Number) value).doubleValue());
+                STATS.labels(clusterName, mBeanInfo.metricName).set(((Number) value).doubleValue());
                 break;
 
             case "boolean":
-                STATS.labels(mBeanInfo.metricName).set(((Boolean) value) ? 1 : 0);
+                STATS.labels(clusterName, mBeanInfo.metricName).set(((Boolean) value) ? 1 : 0);
                 break;
 
             case "javax.management.openmbean.CompositeData":
@@ -218,7 +218,7 @@ public class JmxScraper {
                         case "java.lang.Long":
                         case "java.lang.Double":
                         case "java.lang.Integer":
-                            STATS.labels(mBeanInfo.metricName + metricSeparator + itemName.toLowerCase())
+                            STATS.labels(clusterName, mBeanInfo.metricName + metricSeparator + itemName.toLowerCase())
                                     .set(((Number) data.get(itemName)).doubleValue());
                             break;
                     }
@@ -231,7 +231,7 @@ public class JmxScraper {
 
                 //Most beans declared as Object are Double in disguise
                 if (first >= '0' && first <= '9') {
-                    STATS.labels(mBeanInfo.metricName).set(Double.valueOf(str));
+                    STATS.labels(clusterName, mBeanInfo.metricName).set(Double.valueOf(str));
 
                 } else if (first == '[') {
 
@@ -242,19 +242,19 @@ public class JmxScraper {
                         final String metricName = mBeanInfo.metricName.replace(":value", ":" + (int) (offsetPercentiles[i] * 100) + "thpercentile");
                         MBeanInfo info = new MBeanInfo(metricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
                         if (shouldScrap(info, start)) {
-                            STATS.labels(metricName).set(percentiles[i]);
+                            STATS.labels(clusterName, metricName).set(percentiles[i]);
                         }
                     }
 
                     final String minMetricName = mBeanInfo.metricName.replace(":value", ":min");
                     MBeanInfo info = new MBeanInfo(minMetricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
                     if (shouldScrap(info, start)) {
-                        STATS.labels(minMetricName).set(percentiles[5]);
+                        STATS.labels(clusterName, minMetricName).set(percentiles[5]);
                     }
                     final String metricName = mBeanInfo.metricName.replace(":value", ":max");
                     info = new MBeanInfo(metricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
                     if (shouldScrap(info, start)) {
-                        STATS.labels(metricName).set(percentiles[6]);
+                        STATS.labels(clusterName, metricName).set(percentiles[6]);
                     }
 
                 } else {
