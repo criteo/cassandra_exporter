@@ -110,7 +110,7 @@ blacklist:
    # Mostly for RPC, do not scrap them
    - org:apache:cassandra:db:.*
 
-   # columnfamily is an alias for Table metrics
+   # columnfamily is an alias for Table metrics in cassandra 3.x
    # https://github.com/apache/cassandra/blob/8b3a60b9a7dbefeecc06bace617279612ec7092d/src/java/org/apache/cassandra/metrics/TableMetrics.java#L162
    - org:apache:cassandra:metrics:columnfamily:.*
 
