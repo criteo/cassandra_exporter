@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanServerConnection;
+import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
@@ -18,20 +19,19 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
 
 public class JmxScraper {
-    private static final Logger logger = LoggerFactory.getLogger(JmxScraper.class);
-
     static final Gauge STATS = Gauge.build()
             .name("cassandra_stats")
             .help("node stats")
-            .labelNames("cluster", "datacenter", "name")
+            .labelNames("cluster", "datacenter", "keyspace", "table", "name")
             .register();
-
+    private static final Logger logger = LoggerFactory.getLogger(JmxScraper.class);
     private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
     private static final String metricSeparator = ":";
 
@@ -99,15 +99,58 @@ public class JmxScraper {
         return result;
     }
 
+    private static void updateStats(NodeInfo nodeInfo, String metricName, Double value) {
+
+       if(metricName.startsWith("org:apache:cassandra:metrics:keyspace:")) {
+           int pathLength = "org:apache:cassandra:metrics:keyspace:".length();
+           int pos = metricName.indexOf(':', pathLength);
+           String keyspaceName = metricName.substring(pathLength, pos);
+
+           STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName,
+                   nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName).set(value);
+           return;
+       }
+
+       // Cassandra 3.x path style to get table info
+       if (metricName.startsWith("org:apache:cassandra:metrics:table:")) {
+           int pathLength = "org:apache:cassandra:metrics:table:".length();
+           int keyspacePos = metricName.indexOf(':', pathLength);
+           int tablePos = metricName.indexOf(':', keyspacePos + 1);
+           String keyspaceName = metricName.substring(pathLength, keyspacePos);
+           String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
+
+           if(nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
+               STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+               return;
+           }
+       }
+
+        // Cassandra 2.x path style to get table info
+        if (metricName.startsWith("org:apache:cassandra:metrics:columnfamily:")) {
+            int pathLength = "org:apache:cassandra:metrics:columnfamily:".length();
+            int keyspacePos = metricName.indexOf(':', pathLength);
+            int tablePos = metricName.indexOf(':', keyspacePos + 1);
+            String keyspaceName = metricName.substring(pathLength, keyspacePos);
+            String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
+
+            if(nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
+                STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+                return;
+            }
+        }
+
+       STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName).set(value);
+    }
+
     public void run(final boolean forever) throws Exception {
 
         STATS.clear();
         try(JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
-            final NodeInfo nodeInfo = NodeInfo.getNodeInfo(beanConn);
 
             do {
                 final long now = System.currentTimeMillis();
+                final NodeInfo nodeInfo = NodeInfo.getNodeInfo(beanConn);
                 beanConn.queryMBeans(null, null).stream()
                         .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
                         .filter(m -> shouldScrap(m, now))
@@ -269,11 +312,6 @@ public class JmxScraper {
         logger.trace("Scrapping took {}ms for {}", (System.currentTimeMillis() - start), mBeanInfo.metricName);
     }
 
-
-    private static void updateStats(NodeInfo nodeInfo, String metricName, Double value) {
-       STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, metricName).set(value);
-    }
-
     /**
      * POJO to hold information regarding a metric
      */
@@ -292,15 +330,21 @@ public class JmxScraper {
     private static class NodeInfo {
         final String clusterName;
         final String datacenterName;
+        final Set<String> keyspaces;
+        final Set<String> tables;
 
-        private NodeInfo(String clusterName, String datacenterName) {
+        private NodeInfo(String clusterName, String datacenterName, Set<String> keyspaces, Set<String> tables) {
             this.clusterName = clusterName;
             this.datacenterName = datacenterName;
+            this.keyspaces = keyspaces;
+            this.tables = tables;
         }
 
         static NodeInfo getNodeInfo(MBeanServerConnection beanConn) {
             String clusterName = "";
             String datacenterName = "";
+            Set<String> keyspaces = new HashSet<>();
+            Set<String> tables = new HashSet<>();
 
             try {
                  clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
@@ -314,7 +358,18 @@ public class JmxScraper {
                 logger.error("Cannot retrieve the datacenter name information for the node", e);
             }
 
-            return new NodeInfo(clusterName, datacenterName);
+            try {
+                Set<ObjectName> names = beanConn.queryNames(ObjectName.getInstance("org.apache.cassandra.db:type=ColumnFamilies,keyspace=*,columnfamily=*"), null);
+                for(ObjectName name: names) {
+                    String[] values = name.toString().split("[=,]");
+                    keyspaces.add(values[3]);
+                    tables.add(values[5]);
+                }
+            } catch (Exception e) {
+                logger.error("Cannot retrieve keyspaces/tables information", e);
+            }
+
+            return new NodeInfo(clusterName, datacenterName, keyspaces, tables);
         }
     }
 }
