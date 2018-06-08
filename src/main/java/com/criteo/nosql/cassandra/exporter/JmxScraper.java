@@ -15,6 +15,7 @@ import javax.management.remote.JMXServiceURL;
 import javax.management.remote.rmi.RMIConnectorServer;
 import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -28,7 +29,7 @@ public class JmxScraper {
     static final Gauge STATS = Gauge.build()
             .name("cassandra_stats")
             .help("node stats")
-            .labelNames("cluster", "name")
+            .labelNames("cluster", "datacenter", "name")
             .register();
 
     private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
@@ -103,14 +104,14 @@ public class JmxScraper {
         STATS.clear();
         try(JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
-            final String clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
+            final NodeInfo nodeInfo = NodeInfo.getNodeInfo(beanConn);
 
             do {
                 final long now = System.currentTimeMillis();
                 beanConn.queryMBeans(null, null).stream()
                         .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
                         .filter(m -> shouldScrap(m, now))
-                        .forEach(mBean -> updateMetric(beanConn, mBean, clusterName));
+                        .forEach(mBean -> updateMetric(beanConn, mBean, nodeInfo));
 
 
                 lastScrapes.forEach((k,lastScrape) -> {
@@ -186,7 +187,7 @@ public class JmxScraper {
      * @param beanConn
      * @param mBeanInfo
      */
-    private void updateMetric(MBeanServerConnection beanConn, MBeanInfo mBeanInfo, String clusterName) {
+    private void updateMetric(MBeanServerConnection beanConn, MBeanInfo mBeanInfo, NodeInfo nodeInfo) {
         long start = System.currentTimeMillis();
         Object value = null;
         try {
@@ -203,11 +204,11 @@ public class JmxScraper {
             case "long":
             case "int":
             case "double":
-                STATS.labels(clusterName, mBeanInfo.metricName).set(((Number) value).doubleValue());
+                updateStats(nodeInfo, mBeanInfo.metricName, ((Number) value).doubleValue());
                 break;
 
             case "boolean":
-                STATS.labels(clusterName, mBeanInfo.metricName).set(((Boolean) value) ? 1 : 0);
+                updateStats(nodeInfo, mBeanInfo.metricName, ((Boolean) value) ? 1.0 : 0.0);
                 break;
 
             case "javax.management.openmbean.CompositeData":
@@ -218,8 +219,7 @@ public class JmxScraper {
                         case "java.lang.Long":
                         case "java.lang.Double":
                         case "java.lang.Integer":
-                            STATS.labels(clusterName, mBeanInfo.metricName + metricSeparator + itemName.toLowerCase())
-                                    .set(((Number) data.get(itemName)).doubleValue());
+                            updateStats(nodeInfo, mBeanInfo.metricName + metricSeparator + itemName.toLowerCase(), ((Number) data.get(itemName)).doubleValue());
                             break;
                     }
                 }
@@ -231,7 +231,7 @@ public class JmxScraper {
 
                 //Most beans declared as Object are Double in disguise
                 if (first >= '0' && first <= '9') {
-                    STATS.labels(clusterName, mBeanInfo.metricName).set(Double.valueOf(str));
+                    updateStats(nodeInfo, mBeanInfo.metricName, Double.valueOf(str));
 
                 } else if (first == '[') {
 
@@ -242,19 +242,19 @@ public class JmxScraper {
                         final String metricName = mBeanInfo.metricName.replace(":value", ":" + (int) (offsetPercentiles[i] * 100) + "thpercentile");
                         MBeanInfo info = new MBeanInfo(metricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
                         if (shouldScrap(info, start)) {
-                            STATS.labels(clusterName, metricName).set(percentiles[i]);
+                            updateStats(nodeInfo, metricName, percentiles[i]);
                         }
                     }
 
                     final String minMetricName = mBeanInfo.metricName.replace(":value", ":min");
                     MBeanInfo info = new MBeanInfo(minMetricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
                     if (shouldScrap(info, start)) {
-                        STATS.labels(clusterName, minMetricName).set(percentiles[5]);
+                        updateStats(nodeInfo, minMetricName, percentiles[5]);
                     }
                     final String metricName = mBeanInfo.metricName.replace(":value", ":max");
                     info = new MBeanInfo(metricName, mBeanInfo.mBeanName, mBeanInfo.attribute);
                     if (shouldScrap(info, start)) {
-                        STATS.labels(clusterName, metricName).set(percentiles[6]);
+                        updateStats(nodeInfo, metricName, percentiles[6]);
                     }
 
                 } else {
@@ -269,18 +269,52 @@ public class JmxScraper {
         logger.trace("Scrapping took {}ms for {}", (System.currentTimeMillis() - start), mBeanInfo.metricName);
     }
 
+
+    private static void updateStats(NodeInfo nodeInfo, String metricName, Double value) {
+       STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, metricName).set(value);
+    }
+
     /**
      * POJO to hold information regarding a metric
      */
     private static class MBeanInfo {
-        public final String metricName;
-        public final ObjectName mBeanName;
-        public final MBeanAttributeInfo attribute;
+        final String metricName;
+        final ObjectName mBeanName;
+        final MBeanAttributeInfo attribute;
 
-        public MBeanInfo(String name, ObjectName mBeanName, MBeanAttributeInfo attribute) {
+        MBeanInfo(String name, ObjectName mBeanName, MBeanAttributeInfo attribute) {
            this.metricName = name;
            this.attribute = attribute;
            this.mBeanName = mBeanName;
+        }
+    }
+
+    private static class NodeInfo {
+        final String clusterName;
+        final String datacenterName;
+
+        private NodeInfo(String clusterName, String datacenterName) {
+            this.clusterName = clusterName;
+            this.datacenterName = datacenterName;
+        }
+
+        static NodeInfo getNodeInfo(MBeanServerConnection beanConn) {
+            String clusterName = "";
+            String datacenterName = "";
+
+            try {
+                 clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
+            } catch (Exception e) {
+                logger.error("Cannot retrieve the cluster name information for the node", e);
+            }
+
+            try {
+                datacenterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=EndpointSnitchInfo"), "Datacenter").toString();
+            } catch (Exception e) {
+                logger.error("Cannot retrieve the datacenter name information for the node", e);
+            }
+
+            return new NodeInfo(clusterName, datacenterName);
         }
     }
 }
