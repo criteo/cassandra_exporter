@@ -1,7 +1,7 @@
 FROM openjdk:10.0.1-10-jre-slim-sid
 
-ARG EXPORTER_VERSION=1.0.1
-ARG EXPORTER_SHA512=722e7f646948ad20ad801dcc38c6eff1f3295b5e412013c0b5164e342aed1557de439af0b042deaa006306dceb13d939e99076fd397eddc2401ebfd0dfe4555b
+ARG EXPORTER_VERSION=2.0.0
+ARG EXPORTER_SHA512=7baa4e13f0a3c4228ba9d6cb848027f8837de0a0bc2a6b4fc3d8265e00a53fe926a6eac75a32a84de5e0771b355c1a8715dd46886c134710c6f26f477010b9d3
 
 RUN mkdir -p /etc/cassandra_exporter /opt/cassandra_exporter
 ADD https://github.com/Yelp/dumb-init/releases/download/v1.2.1/dumb-init_1.2.1_amd64 /sbin/dumb-init
