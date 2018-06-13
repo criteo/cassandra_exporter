@@ -24,6 +24,8 @@ As we don't want this kind of situation to happen in production, the scrape freq
 To start the application
 > java -jar cassandra_exporter.jar config.yml
 
+The Cassandra exporter needs to run on every Cassandra nodes to get all the informations regarding the whole cluster.
+
 You can have a look at a full configuration file [here](https://github.com/criteo/cassandra_exporter/blob/master/config.yml)
 The 2 main parts are :
  1. blacklist
