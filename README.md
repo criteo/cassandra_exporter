@@ -141,6 +141,10 @@ You can pull an image directly from [Dockerhub](https://hub.docker.com/r/criteor
 docker pull criteord/cassandra_exporter:latest
 ```
 
+## Kubernetes
+
+To get an idea on how to integrate Cassandra Exporter in Kubernetes, you can look at [this helm Chart](https://github.com/MySocialApp/kubernetes-helm-chart-cassandra).
+
 ## Grafana
 
 Dedicated dashboards can be [found here](https://github.com/criteo/cassandra_exporter/tree/grafana/grafana)
