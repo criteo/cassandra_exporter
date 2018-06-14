@@ -29,7 +29,7 @@ public class JmxScraper {
     static final Gauge STATS = Gauge.build()
             .name("cassandra_stats")
             .help("node stats")
-            .labelNames("cluster", "datacenter", "keyspace", "table", "name")
+            .labelNames("cluster", "datacenter", "node", "keyspace", "table", "name")
             .register();
     private static final Logger logger = LoggerFactory.getLogger(JmxScraper.class);
     private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
@@ -41,13 +41,15 @@ public class JmxScraper {
     private final TreeMap<Integer, List<Pattern>> scrapFrequencies;
     private final Map<Integer, Long> lastScrapes;
     private final Map<String, Object> jmxEnv;
+    private final String nodeName;
 
 
-    public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies) {
+    public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies, String node) {
         this.jmxUrl = jmxUrl;
         this.blacklist = blacklist.stream().map(Pattern::compile).collect(toList());
         this.scrapFrequencies = new TreeMap<>();
         this.lastScrapes = new HashMap<>(scrapFrequencies.size());
+        this.nodeName = node;
 
         scrapFrequencies.forEach((k, v) -> {
             this.scrapFrequencies.put(k * 1000, v.stream().map(Pattern::compile).collect(toList()));
@@ -106,7 +108,7 @@ public class JmxScraper {
            int pos = metricName.indexOf(':', pathLength);
            String keyspaceName = metricName.substring(pathLength, pos);
 
-           STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName,
+           STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, nodeInfo.nodeName,
                    nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName).set(value);
            return;
        }
@@ -120,7 +122,7 @@ public class JmxScraper {
            String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
            if(nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-               STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+               STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, nodeInfo.nodeName, keyspaceName, tableName, metricName).set(value);
                return;
            }
        }
@@ -134,12 +136,12 @@ public class JmxScraper {
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
             if(nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-                STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+                STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, nodeInfo.nodeName, keyspaceName, tableName, metricName).set(value);
                 return;
             }
         }
 
-       STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName).set(value);
+       STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, nodeInfo.nodeName, "", "", metricName).set(value);
     }
 
     public void run(final boolean forever) throws Exception {
@@ -150,7 +152,7 @@ public class JmxScraper {
 
             do {
                 final long now = System.currentTimeMillis();
-                final NodeInfo nodeInfo = NodeInfo.getNodeInfo(beanConn);
+                final NodeInfo nodeInfo = NodeInfo.getNodeInfo(beanConn, nodeName);
                 beanConn.queryMBeans(null, null).stream()
                         .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
                         .filter(m -> shouldScrap(m, now))
@@ -332,15 +334,17 @@ public class JmxScraper {
         final String datacenterName;
         final Set<String> keyspaces;
         final Set<String> tables;
+        final String nodeName;
 
-        private NodeInfo(String clusterName, String datacenterName, Set<String> keyspaces, Set<String> tables) {
+        private NodeInfo(String clusterName, String datacenterName, Set<String> keyspaces, Set<String> tables, String nodeName) {
             this.clusterName = clusterName;
             this.datacenterName = datacenterName;
             this.keyspaces = keyspaces;
             this.tables = tables;
+            this.nodeName = nodeName;
         }
 
-        static NodeInfo getNodeInfo(MBeanServerConnection beanConn) {
+        static NodeInfo getNodeInfo(MBeanServerConnection beanConn, String nodeName) {
             String clusterName = "";
             String datacenterName = "";
             Set<String> keyspaces = new HashSet<>();
@@ -369,7 +373,7 @@ public class JmxScraper {
                 logger.error("Cannot retrieve keyspaces/tables information", e);
             }
 
-            return new NodeInfo(clusterName, datacenterName, keyspaces, tables);
+            return new NodeInfo(clusterName, datacenterName, keyspaces, tables, nodeName);
         }
     }
 }
