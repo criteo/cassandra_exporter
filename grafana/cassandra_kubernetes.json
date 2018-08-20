@@ -3289,7 +3289,7 @@
           },
           "yaxes": [
             {
-              "format": "bytes",
+              "format": "ms",
               "label": null,
               "logBase": 1,
               "max": null,
@@ -3354,7 +3354,7 @@
               "expr": "sum(label_replace(cassandra_stats{datacenter=\"$datacenter\", cluster=\"$cluster\",name=~\"java:lang:memory:.+:(committed|max|used)\"}, \"info\", \"$1 $2\", \"name\", \"java:lang:memory:(.+?):(.+?)\")) by (name)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{ info }}",
+              "legendFormat": "{{ name }}",
               "refId": "A"
             },
             {
