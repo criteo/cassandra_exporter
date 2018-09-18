@@ -20,4 +20,12 @@ while IFS='=' read -r name value ; do
   fi
 done < <(env)
 
+host=$(grep -m1 'host:' /etc/cassandra_exporter/config.yml | cut -d ':' -f2)
+port=$(grep -m1 'host:' /etc/cassandra_exporter/config.yml | cut -d ':' -f3)
+
+while ! nc -z $host $port; do
+  echo "Waiting for Cassandra JMX to start on $host:$port"
+  sleep 1
+done
+
 /sbin/dumb-init /usr/bin/java ${JVM_OPTS} -jar /opt/cassandra_exporter/cassandra_exporter.jar /etc/cassandra_exporter/config.yml
