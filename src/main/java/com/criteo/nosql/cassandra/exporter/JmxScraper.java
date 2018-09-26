@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanServerConnection;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
@@ -16,10 +15,8 @@ import javax.management.remote.JMXServiceURL;
 import javax.management.remote.rmi.RMIConnectorServer;
 import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
-import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -150,11 +147,17 @@ public class JmxScraper {
 
             do {
                 final long now = System.currentTimeMillis();
-                final NodeInfo nodeInfo = NodeInfo.getNodeInfo(beanConn);
+
+                // If we can't get the node info, exit the run early in order to avoid creating stale metrics
+                // that will never be cleaned after that
+                // This situation can appear if the node start to be unresponsive and that some jmx operation timeouts
+                final Optional<NodeInfo> nodeInfo = NodeInfo.getNodeInfo(beanConn);
+                if (!nodeInfo.isPresent()) return;
+
                 beanConn.queryMBeans(null, null).stream()
                         .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
                         .filter(m -> shouldScrap(m, now))
-                        .forEach(mBean -> updateMetric(beanConn, mBean, nodeInfo));
+                        .forEach(mBean -> updateMetric(beanConn, mBean, nodeInfo.get()));
 
 
                 lastScrapes.forEach((k,lastScrape) -> {
@@ -340,9 +343,9 @@ public class JmxScraper {
             this.tables = tables;
         }
 
-        static NodeInfo getNodeInfo(MBeanServerConnection beanConn) {
-            String clusterName = "";
-            String datacenterName = "";
+        static Optional<NodeInfo> getNodeInfo(MBeanServerConnection beanConn) {
+            String clusterName;
+            String datacenterName;
             Set<String> keyspaces = new HashSet<>();
             Set<String> tables = new HashSet<>();
 
@@ -350,12 +353,14 @@ public class JmxScraper {
                  clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
             } catch (Exception e) {
                 logger.error("Cannot retrieve the cluster name information for the node", e);
+                return Optional.empty();
             }
 
             try {
                 datacenterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=EndpointSnitchInfo"), "Datacenter").toString();
             } catch (Exception e) {
                 logger.error("Cannot retrieve the datacenter name information for the node", e);
+                return Optional.empty();
             }
 
             try {
@@ -367,9 +372,10 @@ public class JmxScraper {
                 }
             } catch (Exception e) {
                 logger.error("Cannot retrieve keyspaces/tables information", e);
+                return Optional.empty();
             }
 
-            return new NodeInfo(clusterName, datacenterName, keyspaces, tables);
+            return Optional.of(new NodeInfo(clusterName, datacenterName, keyspaces, tables));
         }
     }
 }
