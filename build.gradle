@@ -1,5 +1,5 @@
 group 'com.criteo.nosql'
-version '2.0.2'
+version '2.0.3'
 
 apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
@@ -27,9 +27,9 @@ dependencies {
     compile  group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.8.8'
 
     // Prometheus
-    compile group: 'io.prometheus', name: 'simpleclient', version: '0.1.0'
-    compile group: 'io.prometheus', name: 'simpleclient_common', version: '0.1.0'
-    compile group: 'io.prometheus', name: 'simpleclient_httpserver', version: '0.1.0'
+    compile group: 'io.prometheus', name: 'simpleclient', version: '0.5.0'
+    compile group: 'io.prometheus', name: 'simpleclient_common', version: '0.5.0'
+    compile group: 'io.prometheus', name: 'simpleclient_httpserver', version: '0.5.0'
 }
 
 // If you don't use the uber jar
