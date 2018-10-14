@@ -4,9 +4,7 @@ import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
+import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.remote.JMXConnector;
@@ -18,6 +16,7 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
 
 import static java.util.stream.Collectors.toList;
 
@@ -31,6 +30,7 @@ public class JmxScraper {
     private static final Logger logger = LoggerFactory.getLogger(JmxScraper.class);
     private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
     private static final String metricSeparator = ":";
+    private static final Map<String, MBeanAttributeInfo[]> mBeansAttributesCache = new HashMap<>();
 
     private final String jmxUrl;
     private final Pattern PATTERN = Pattern.compile("(:type=|,[^=]+=|\\.)");
@@ -98,29 +98,29 @@ public class JmxScraper {
 
     private static void updateStats(NodeInfo nodeInfo, String metricName, Double value) {
 
-       if(metricName.startsWith("org:apache:cassandra:metrics:keyspace:")) {
-           int pathLength = "org:apache:cassandra:metrics:keyspace:".length();
-           int pos = metricName.indexOf(':', pathLength);
-           String keyspaceName = metricName.substring(pathLength, pos);
+        if (metricName.startsWith("org:apache:cassandra:metrics:keyspace:")) {
+            int pathLength = "org:apache:cassandra:metrics:keyspace:".length();
+            int pos = metricName.indexOf(':', pathLength);
+            String keyspaceName = metricName.substring(pathLength, pos);
 
-           STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName,
-                   nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName).set(value);
-           return;
-       }
+            STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName,
+                    nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName).set(value);
+            return;
+        }
 
-       // Cassandra 3.x path style to get table info
-       if (metricName.startsWith("org:apache:cassandra:metrics:table:")) {
-           int pathLength = "org:apache:cassandra:metrics:table:".length();
-           int keyspacePos = metricName.indexOf(':', pathLength);
-           int tablePos = metricName.indexOf(':', keyspacePos + 1);
-           String keyspaceName = metricName.substring(pathLength, keyspacePos);
-           String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
+        // Cassandra 3.x path style to get table info
+        if (metricName.startsWith("org:apache:cassandra:metrics:table:")) {
+            int pathLength = "org:apache:cassandra:metrics:table:".length();
+            int keyspacePos = metricName.indexOf(':', pathLength);
+            int tablePos = metricName.indexOf(':', keyspacePos + 1);
+            String keyspaceName = metricName.substring(pathLength, keyspacePos);
+            String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
-           if(nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-               STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
-               return;
-           }
-       }
+            if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
+                STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+                return;
+            }
+        }
 
         // Cassandra 2.x path style to get table info
         if (metricName.startsWith("org:apache:cassandra:metrics:columnfamily:")) {
@@ -130,19 +130,19 @@ public class JmxScraper {
             String keyspaceName = metricName.substring(pathLength, keyspacePos);
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
-            if(nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
+            if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
                 STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
                 return;
             }
         }
 
-       STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName).set(value);
+        STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName).set(value);
     }
 
     public void run(final boolean forever) throws Exception {
 
         STATS.clear();
-        try(JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
+        try (JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
 
             do {
@@ -154,21 +154,24 @@ public class JmxScraper {
                 final Optional<NodeInfo> nodeInfo = NodeInfo.getNodeInfo(beanConn);
                 if (!nodeInfo.isPresent()) return;
 
+                MBeanAttributeInfo attr = new MBeanAttributeInfo("", "", "", false, false, false);
                 beanConn.queryMBeans(null, null).stream()
-                        .flatMap(objectInstance -> toMBeanInfos(beanConn, objectInstance.getObjectName()))
+                        .map(objectInstance -> new MBeanInfo(getMetricPath(objectInstance.getObjectName(), attr), objectInstance.getObjectName(), attr))
+                        .filter(mbean -> blacklist.stream().noneMatch(pattern -> pattern.matcher(mbean.metricName).matches()))
+                        .flatMap(mBeanInfo -> toMBeanInfos(beanConn, mBeanInfo))
                         .filter(m -> shouldScrap(m, now))
                         .forEach(mBean -> updateMetric(beanConn, mBean, nodeInfo.get()));
 
 
-                lastScrapes.forEach((k,lastScrape) -> {
+                lastScrapes.forEach((k, lastScrape) -> {
                     if (now - lastScrape >= k) lastScrapes.put(k, now);
                 });
 
                 final long duration = System.currentTimeMillis() - now;
-               logger.info("Scrap took {}ms for the whole run", duration);
+                logger.info("Scrap took {}ms for the whole run", duration);
 
-               // don't go lower than 10 sec
-               if(forever) Thread.sleep(Math.max(scrapFrequencies.firstKey() - duration, 10 * 1000));
+                // don't go lower than 10 sec
+                if (forever) Thread.sleep(Math.max(scrapFrequencies.firstKey() - duration, 10 * 1000));
             } while (forever);
         }
     }
@@ -181,13 +184,13 @@ public class JmxScraper {
      * @return True if we should scrap it, False if not
      */
     private boolean shouldScrap(final MBeanInfo mBeanInfo, final long now) {
-        if(blacklist.stream().anyMatch(pattern -> pattern.matcher(mBeanInfo.metricName).matches())) {
+        if (blacklist.stream().anyMatch(pattern -> pattern.matcher(mBeanInfo.metricName).matches())) {
             return false;
         }
 
-        for(Map.Entry<Integer, List<Pattern>> e: scrapFrequencies.descendingMap().entrySet()) {
-            for(Pattern p: e.getValue()) {
-                if(p.matcher(mBeanInfo.metricName).matches()) {
+        for (Map.Entry<Integer, List<Pattern>> e : scrapFrequencies.descendingMap().entrySet()) {
+            for (Pattern p : e.getValue()) {
+                if (p.matcher(mBeanInfo.metricName).matches()) {
                     return now - lastScrapes.get(e.getKey()) >= e.getKey();
                 }
             }
@@ -199,16 +202,26 @@ public class JmxScraper {
      * Return all possible MbeanInfo from a MBean path.
      * The main interest is to unroll of the attributes of an Mbeans in order to filter on it
      *
-     * @param beanConn  The JMX connexion
-     * @param mbeanName The MBean path
+     * @param beanConn The JMX connexion
      */
-    private Stream<MBeanInfo> toMBeanInfos(MBeanServerConnection beanConn, ObjectName mbeanName) {
+    private Stream<MBeanInfo> toMBeanInfos(MBeanServerConnection beanConn, MBeanInfo mBeanInfo) {
         try {
-            return Arrays.stream(beanConn.getMBeanInfo(mbeanName).getAttributes())
+            ObjectName mbeanName = mBeanInfo.mBeanName;
+            String name = "" + mbeanName.getKeyPropertyList().size() + mbeanName.getKeyProperty("type") + mbeanName.getKeyProperty("name");
+            MBeanAttributeInfo[] info = mBeansAttributesCache.computeIfAbsent(name, xx -> {
+                try {
+                    return beanConn.getMBeanInfo(mbeanName).getAttributes();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            return Arrays.stream(info)
                     .filter(MBeanAttributeInfo::isReadable)
-                    .map(mBeanAttributeInfo -> new MBeanInfo(getMetricPath(mbeanName, mBeanAttributeInfo), mbeanName, mBeanAttributeInfo));
+                    //TODO: Refactor get MetricPath
+                    .map(mBeanAttributeInfo -> new MBeanInfo(mBeanInfo.metricName + mBeanAttributeInfo.getName().toLowerCase(), mbeanName, mBeanAttributeInfo));
         } catch (Exception e) {
-            logger.error(" Error when scraping mbean {}", mbeanName, e);
+            logger.error(" Error when scraping mbean {}", mBeanInfo.mBeanName, e);
             return Stream.empty();
         }
     }
@@ -217,7 +230,7 @@ public class JmxScraper {
      * Return the formatted metric for a given MBean and attribute
      *
      * @param mbeanName Mbean object
-     * @param attr Specific attribute of this Mbean
+     * @param attr      Specific attribute of this Mbean
      * @return the formatted metric name
      */
     private String getMetricPath(ObjectName mbeanName, MBeanAttributeInfo attr) {
@@ -238,7 +251,7 @@ public class JmxScraper {
         Object value = null;
         try {
             value = beanConn.getAttribute(mBeanInfo.mBeanName, mBeanInfo.attribute.getName());
-        } catch(Exception e) {
+        } catch (Exception e) {
             logger.error("Cannot get value for {}{}", mBeanInfo, mBeanInfo.attribute.getName(), e);
         }
         if (value == null) {
@@ -324,9 +337,9 @@ public class JmxScraper {
         final MBeanAttributeInfo attribute;
 
         MBeanInfo(String name, ObjectName mBeanName, MBeanAttributeInfo attribute) {
-           this.metricName = name;
-           this.attribute = attribute;
-           this.mBeanName = mBeanName;
+            this.metricName = name;
+            this.attribute = attribute;
+            this.mBeanName = mBeanName;
         }
     }
 
@@ -350,7 +363,7 @@ public class JmxScraper {
             Set<String> tables = new HashSet<>();
 
             try {
-                 clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
+                clusterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "ClusterName").toString();
             } catch (Exception e) {
                 logger.error("Cannot retrieve the cluster name information for the node", e);
                 return Optional.empty();
@@ -365,7 +378,7 @@ public class JmxScraper {
 
             try {
                 Set<ObjectName> names = beanConn.queryNames(ObjectName.getInstance("org.apache.cassandra.db:type=ColumnFamilies,keyspace=*,columnfamily=*"), null);
-                for(ObjectName name: names) {
+                for (ObjectName name : names) {
                     String[] values = name.toString().split("[=,]");
                     keyspaces.add(values[3]);
                     tables.add(values[5]);
