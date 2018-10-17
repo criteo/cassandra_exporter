@@ -21,6 +21,29 @@ As we don't want this kind of situation to happen in production, the scrape freq
 ![Grafana](https://grafana.com/api/dashboards/6258/images/3996/image)
 ![Grafana](https://grafana.com/api/dashboards/6400/images/4111/image)
 
+## Design explanation
+
+The project has two focus: safety and maintenability.
+
+Every time a tradeoff had to be made, the solution that prioritize one of those points got the advantage
+
+##### Why not provide the exporter as an agent for cassandra ?
+- Safety: The agent share the same jvm than cassandra itself and I don't want metrics calls to be able to hammer down cassandra nodes.
+- Safety: If there is a bug/leak in the exporter itself it should not impact cassandra
+- Maintenability: Upgrading the exporter should not require to restart the cassandra cluster
+
+##### Why cache metrics results, this is not the prometheus way ?
+- Safety: JMX is an heayweight RPC mechanism and some cassandra metrics calls are expensive to scrap (i.e: snapshots size) as they trigger some heavy operations for cassandra. Not caching results mean that you can bring down your nodes by just requesting the metrics page
+
+##### Why not make more use of labels, be more prometheus way ?
+- Maintenability: I want the exporter to be able to support multiple version of cassandra (2.2.X/3.X/4.X) without having to hand tune the metrics labels for each version of cassandra. Metrics path change between versions of cassandra and I want to avoid the hustle of having to maintain the mapping
+
+##### Why this exporter is slower than jmx_exporter ?
+- Maintenability: When your cluster grow in number of node, the cardinality of metrics start to put too much pressure on Prometheus itself. A lot of this cardinality is due to the not too much usefulness of metrics like 999thpercentile et co. This exporter let you choose to not export them, which is not possible with jmx, but at the cost of a small runtime penality in order to discover them. So this exporter let you reach a bigger scale before you have to rely on metric aggregation in order to scale more.  
+
+##### Why the exporter is not written in GO ?
+- Cassandra metrics are only available trought JMX, which in turn is only accessible with Java.
+
 ## How to use
 
 To start the application
