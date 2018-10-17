@@ -23,7 +23,7 @@ As we don't want this kind of situation to happen in production, the scrape freq
 
 ## Design explanation
 
-The project has two focus: safety and maintenability.
+The project has two focus: **safety** and **maintenability**.
 
 Every time a tradeoff had to be made, the solution that prioritize one of those points got the advantage
 
