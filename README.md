@@ -41,7 +41,7 @@ Every time a tradeoff had to be made, the solution that prioritize one of those 
 ##### Why this exporter is slower than jmx_exporter ?
 - Maintenability: When your cluster grow in number of nodes, the cardinality of metrics start to put too much pressure on Prometheus itself. A lot of this cardinality is due to the not too much usefulness of metrics like 999thpercentile et co. This exporter let you choose to not export them, which is not possible with jmx_exporter, but at the cost of a small runtime penality in order to discover them. So this exporter let you reach a bigger scale before you have to rely on metric aggregation in order to scale more.
 
-Unless you have hundred of tables, the scrap time will stay below 10sec
+Unless you have hundreds of tables, the scrap time will stay below 10sec
 
 ##### Why the exporter is not written in GO ?
 - Cassandra metrics are only available trought JMX, which in turn is only accessible with Java.
