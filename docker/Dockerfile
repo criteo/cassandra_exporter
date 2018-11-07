@@ -1,7 +1,7 @@
 FROM openjdk:11-jre-slim-sid
 
 ARG EXPORTER_VERSION=2.0.3
-ARG EXPORTER_SHA512=e74ad57df87b5e8f7f2a37f8e5ffae93410691171dc0197be7ee2ca711822cc831815855ee278d7d23b9c6a6f1c71e0ad3cfaedbdfa981c36c636755e21a1140
+ARG EXPORTER_SHA512=ce034503ab0f5239cdb1e1e6f6c3b47109899fdb65f1c0bdb62d3bed25aabe6978315a7e3d20674b8d72102f9c078370bae4af03a0ae9bdf44064a416578810d
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		netcat \
