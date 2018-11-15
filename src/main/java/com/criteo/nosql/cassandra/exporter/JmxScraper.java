@@ -4,7 +4,9 @@ import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.*;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.remote.JMXConnector;
@@ -16,7 +18,6 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
 
 import static java.util.stream.Collectors.toList;
 
@@ -370,7 +371,11 @@ public class JmxScraper {
             }
 
             try {
-                datacenterName = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=EndpointSnitchInfo"), "Datacenter").toString();
+                String hostID = beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "LocalHostId").toString();
+                Map<String, String> hostIdToEndpoint = (Map<String, String>) beanConn.getAttribute(ObjectName.getInstance("org.apache.cassandra.db:type=StorageService"), "HostIdToEndpoint");
+                Object opParams[] = {hostIdToEndpoint.get(hostID)};
+                String opSig[] = {String.class.getName()};
+                datacenterName = beanConn.invoke(ObjectName.getInstance("org.apache.cassandra.db:type=EndpointSnitchInfo"), "getDatacenter", opParams, opSig).toString();
             } catch (Exception e) {
                 logger.error("Cannot retrieve the datacenter name information for the node", e);
                 return Optional.empty();
