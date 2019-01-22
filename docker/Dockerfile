@@ -15,6 +15,6 @@ RUN echo "${EXPORTER_SHA512}  /opt/cassandra_exporter/cassandra_exporter.jar" > 
 ADD config.yml /etc/cassandra_exporter/
 ADD run.sh /
 
-RUN chmod +x /sbin/dumb-init && chmod g+wrx -R /opt/cassandra_exporter
+RUN chmod +x /sbin/dumb-init && chmod g+wrx -R /opt/cassandra_exporter && chmod g+wrx -R /etc/cassandra_exporter
 
 CMD ["/sbin/dumb-init", "/bin/bash", "/run.sh"]
