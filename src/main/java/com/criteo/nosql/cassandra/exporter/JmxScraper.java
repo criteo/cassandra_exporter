@@ -385,8 +385,8 @@ public class JmxScraper {
                 Set<ObjectName> names = beanConn.queryNames(ObjectName.getInstance("org.apache.cassandra.db:type=ColumnFamilies,keyspace=*,columnfamily=*"), null);
                 for (ObjectName name : names) {
                     String[] values = name.toString().split("[=,]");
-                    keyspaces.add(values[3]);
-                    tables.add(values[5]);
+                    keyspaces.add(values[3].toLowerCase());
+                    tables.add(values[5].toLowerCase());
                 }
             } catch (Exception e) {
                 logger.error("Cannot retrieve keyspaces/tables information", e);
