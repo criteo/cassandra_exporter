@@ -1,0 +1,78 @@
+---
+
+- name: 'create cassandra exporter group'
+  group:
+    name: '{{ cassandra_exporter_group }}'
+    system: yes
+    state: present
+
+- name: 'create cassandra exporter user'
+  user:
+    name: '{{ cassandra_exporter_user }}'
+    system: yes
+    shell: '/sbin/nologin'
+    group: '{{ cassandra_exporter_group }}'
+    createhome: no
+
+- name: 'create cassandra exporter directories'
+  file:
+    path: '{{ item }}'
+    state: directory
+    owner: '{{ cassandra_exporter_user }}'
+    group: '{{ cassandra_exporter_group }}'
+    mode: 0755
+  with_items:
+    - '{{ cassandra_exporter_root_dir }}'
+    - '{{ cassandra_exporter_dist_dir }}'
+
+- name: 'download cassandra exporter binary'
+  get_url:
+    url: '{{ cassandra_exporter_binary_url }}'
+    dest: '{{ cassandra_exporter_dist_dir }}/cassandra.jar'
+
+- name: 'download cassandra exporter config'
+  get_url:
+    url: '{{ cassandra_exporter_config_url }}'
+    dest: '{{ cassandra_exporter_config_dir }}/config.yml'
+
+- name: 'generate the shell script'
+  template:
+    src: cassandra_exporter.sh.j2
+    dest: '{{ cassandra_exporter_dist_dir }}/cassandra_exporter.sh'
+    owner: root
+    group: root
+    mode: 0755
+  register: prometheus_cassandra_exporter_updated
+  notify:
+    - restart cassandra exporter
+
+- name: 'update group and owner for files'
+  file:
+    path: '{{ item }}'
+    state: file
+    owner: '{{ cassandra_exporter_user }}'
+    group: '{{ cassandra_exporter_group }}'
+  with_items:
+    - '{{ cassandra_exporter_dist_dir }}/cassandra.jar'
+    - '{{ cassandra_exporter_config_dir }}/config.yml'
+  when: prometheus_cassandra_exporter_updated is changed
+
+- name: 'create systemd service unit'
+  template:
+    src: etc/systemd/system/prometheus-cassandra-exporter.service.j2
+    dest: /etc/systemd/system/prometheus-cassandra-exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  when: service_mgr | default(ansible_service_mgr) == 'systemd'
+  notify:
+    - reenable cassandra exporter service
+    - restart cassandra exporter
+
+- meta: flush_handlers
+
+- name: 'ensure prometheus cassandra exporter service is enabled and started'
+  service:
+    name: prometheus-cassandra-exporter
+    state: started
+    enabled: yes

@@ -1,0 +1,6 @@
+---
+- hosts: localhost
+  become: true
+  become_method: sudo
+  roles:
+    - ansible-cassandra-exporter

@@ -1,0 +1,15 @@
+[Unit]
+Description=Prometheus Cassandra Exporter
+After=network.target
+
+[Service]
+Type=simple
+User={{ cassandra_exporter_user }}
+Group={{ cassandra_exporter_group }}
+ExecStart={{ cassandra_exporter_dist_dir }}/cassandra_exporter.sh
+
+SyslogIdentifier=prometheus_cassandra_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

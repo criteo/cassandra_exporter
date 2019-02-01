@@ -1,0 +1,12 @@
+---
+
+- name: reenable cassandra exporter service
+  command: systemctl reenable prometheus-cassandra-exporter.service
+
+- name: reinit cassandra exporter
+  command: initctl reload-configuration
+
+- name: restart cassandra exporter
+  service:
+    name: prometheus-cassandra-exporter
+    state: restarted
