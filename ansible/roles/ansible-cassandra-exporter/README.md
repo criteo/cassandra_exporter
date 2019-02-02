@@ -11,11 +11,11 @@ Role Variables
 | `cassandra_exporter_version` | 2.2.0 | Cassandra exporter package version |
 | `cassandra_exporter_binary_url` | https://github.com/criteo/cassandra_exporter/releases/download/{{cassandra_exporter_version}}/cassandra_exporter-{{cassandra_exporter_version}}-all.jar | Cassandra exporter jar download location |
 | `cassandra_exporter_config_url` | https://raw.githubusercontent.com/criteo/cassandra_exporter/master/config.yml | Cassandra exporter config download location |
-| `cassandra_exporter_user` | 2.2.0 | UNIX user to run the binary |
-| `cassandra_exporter_group` | 2.2.0 | UNIX group to run the binary |
-| `cassandra_exporter_root_dir` | 2.2.0 | Base location where cassandra exporter stuff is downloaded |
-| `cassandra_exporter_dist_dir` | 2.2.0 | Location for binary and systemd service script |
-| `cassandra_exporter_config_dir` | 2.2.0 | Location for config |
+| `cassandra_exporter_user` | cassandra-exp | UNIX user to run the binary |
+| `cassandra_exporter_group` | cassandra-exp | UNIX group to run the binary |
+| `cassandra_exporter_root_dir` | /opt/cassandra_exporter | Base location where cassandra exporter stuff is downloaded |
+| `cassandra_exporter_dist_dir` | /opt/cassandra_exporter/dist | Location for binary and systemd service script |
+| `cassandra_exporter_config_dir` | /opt/cassandra_exporter/config | Location for config |
 
 
 Example Playbook
