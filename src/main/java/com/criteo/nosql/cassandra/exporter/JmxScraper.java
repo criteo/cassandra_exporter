@@ -253,7 +253,7 @@ public class JmxScraper {
         try {
             value = beanConn.getAttribute(mBeanInfo.mBeanName, mBeanInfo.attribute.getName());
         } catch (Exception e) {
-            logger.error("Cannot get value for {}{}", mBeanInfo, mBeanInfo.attribute.getName(), e);
+            logger.error("Cannot get value for {} {}", mBeanInfo.metricName, mBeanInfo.attribute.getName(), e);
         }
         if (value == null) {
             return;
