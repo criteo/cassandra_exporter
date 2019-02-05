@@ -24,6 +24,7 @@
   with_items:
     - '{{ cassandra_exporter_root_dir }}'
     - '{{ cassandra_exporter_dist_dir }}'
+    - '{{ cassandra_exporter_config_dir }}'
 
 - name: 'download cassandra exporter binary'
   get_url:
@@ -34,6 +35,18 @@
   get_url:
     url: '{{ cassandra_exporter_config_url }}'
     dest: '{{ cassandra_exporter_config_dir }}/config.yml'
+
+- name: 'set cassandra listen address'
+  lineinfile:
+    regexp: "^listenAddress"
+    dest:  "{{ cassandra_exporter_config_dir }}/config.yml"
+    line: "listenAddress: {{ cassandra_listen_address }}"
+
+- name: 'set cassandra listen port'
+  lineinfile:
+    regexp: "^listenPort"
+    dest:  "{{ cassandra_exporter_config_dir }}/config.yml"
+    line: "listenPort: {{ cassandra_listen_port }}"
 
 - name: 'generate the shell script'
   template:
