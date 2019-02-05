@@ -1,7 +1,11 @@
 ---
 
 - name: reenable cassandra exporter service
-  command: systemctl reenable prometheus-cassandra-exporter.service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+    name: prometheus-cassandra-exporter
 
 - name: reinit cassandra exporter
   command: initctl reload-configuration
