@@ -9,6 +9,8 @@ Role Variables
 | Name           | Default Value | Description                        |
 | -------------- | ------------- | -----------------------------------|
 | `cassandra_exporter_version` | 2.2.0 | Cassandra exporter package version |
+| `cassandra_listen_address` | 0.0.0.0 | Cassandra exporter listening address |
+| `cassandra_listen_port` | 8080 | Cassandra exporter listening port |
 | `cassandra_exporter_binary_url` | https://github.com/criteo/cassandra_exporter/releases/download/{{cassandra_exporter_version}}/cassandra_exporter-{{cassandra_exporter_version}}-all.jar | Cassandra exporter jar download location |
 | `cassandra_exporter_config_url` | https://raw.githubusercontent.com/criteo/cassandra_exporter/master/config.yml | Cassandra exporter config download location |
 | `cassandra_exporter_user` | cassandra-exp | UNIX user to run the binary |
