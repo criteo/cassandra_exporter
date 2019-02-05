@@ -113,6 +113,7 @@ host: localhost:7199
 ssl: False
 user:
 password:
+listenAddress: 0.0.0.0
 listenPort: 8080
 blacklist:
    # Unaccessible metrics (not enough privilege)

@@ -2,6 +2,7 @@ host: localhost:7199
 ssl: False
 user:
 password:
+listenAddress: 0.0.0.0
 listenPort: 8080
 blacklist:
    # To profile the duration of jmx call you can start the program with the following options
