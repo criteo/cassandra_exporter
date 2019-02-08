@@ -35,6 +35,13 @@
   get_url:
     url: '{{ cassandra_exporter_config_url }}'
     dest: '{{ cassandra_exporter_config_dir }}/config.yml'
+  when: cassandra_exporter_config is not defined
+
+- name: 'Copy cassandra exporter config'
+  copy:
+    src: '{{ cassandra_exporter_config }}'
+    dest: '{{ cassandra_exporter_config_dir }}/config.yml'
+  when: cassandra_exporter_config is defined
 
 - name: 'set cassandra listen address'
   lineinfile:
