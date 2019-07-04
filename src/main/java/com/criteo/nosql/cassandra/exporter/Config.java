@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,7 @@ public final class Config {
     }
 
     public List<String> getBlacklist() {
-        return blacklist;
+        return blacklist == null ? Collections.emptyList() : blacklist;
     }
 
     public boolean getSSL() {
