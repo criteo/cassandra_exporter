@@ -293,7 +293,9 @@ public class JmxScraper {
                 if (first >= '0' && first <= '9') {
                     updateStats(nodeInfo, mBeanInfo.metricName, Double.valueOf(str));
 
-                } else if (first == '[') {
+                    // https://books.google.fr/books?id=BvsVuph6ehMC&pg=PA82
+                    // EstimatedHistogram are object for JMX but are long[] behind
+                } else if (str.startsWith(long[].class.getName())) {
 
                     // This is ugly to redo the shouldScrap and metricName formating this late
                     // but EstimatedHistogram in cassandra are special case that we cannot detect before :(
