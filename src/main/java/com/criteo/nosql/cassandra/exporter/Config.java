@@ -22,7 +22,7 @@ public final class Config {
     private String listenAddress = "0.0.0.0";
     private String user;
     private String password;
-    private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
+    private SortedMap<Integer, List<String>> maxScrapeFrequencyInSec;
 
     public static Optional<Config> fromFile(String filePath) {
         Logger logger = LoggerFactory.getLogger(Config.class);
@@ -39,8 +39,8 @@ public final class Config {
         }
     }
 
-    public SortedMap<Integer, List<String>> getMaxScrapFrequencyInSec() {
-        return maxScrapFrequencyInSec;
+    public SortedMap<Integer, List<String>> getMaxScrapeFrequencyInSec() {
+        return maxScrapeFrequencyInSec;
     }
 
     public Optional<String> getUser() {

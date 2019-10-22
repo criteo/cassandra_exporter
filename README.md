@@ -56,18 +56,18 @@ The Cassandra exporter needs to run on every Cassandra nodes to get all the info
 You can have a look at a full configuration file [here](https://github.com/criteo/cassandra_exporter/blob/master/config.yml)
 The 2 main parts are :
  1. blacklist
- 1. maxScrapFrequencyInSec
+ 1. maxScrapeFrequencyInSec
 
 In the `blacklist` block, you specify the metrics you don't want the exporter to scrape. This is important as JMX is an RPC mechanism and you don't want to trigger some of those RPC. For example, mbeans endpoint from `org:apache:cassandra:db:.*` does not expose any metrics but are used to trigger actions on Cassandra's nodes.
 
-In the `maxScrapFrequencyInSec`, you specify the metrics you want to be scraped at which frequency.
-Basically, starting from the set of all mbeans, the blacklist is applied first to filter this set and then the `maxScrapFrequencyInSec` is applied as a whitelist to filter the resulting set.
+In the `maxScrapeFrequencyInSec`, you specify the metrics you want to be scraped at which frequency.
+Basically, starting from the set of all mbeans, the blacklist is applied first to filter this set and then the `maxScrapeFrequencyInSec` is applied as a whitelist to filter the resulting set.
 
 As an example, if we take as input set the metrics `{a, b, c}` and the config file is
 ```yaml
 blacklist:
   - a
-maxScrapFrequencyInSec:
+maxScrapeFrequencyInSec:
   50:
     - .*
   3600:
@@ -75,7 +75,7 @@ maxScrapFrequencyInSec:
 ```
 Cassandra Exporter will have the following behavior:
 1. The metrics matching the blacklisted entries will never be scraped, here the metric `a` won't be available
-1. In reverse order of frequency the metrics matching `maxScrapFrequencyInSec` will be scraped
+1. In reverse order of frequency the metrics matching `maxScrapeFrequencyInSec` will be scraped
    1. Metric `b` will be scraped every hour
    1. Remaining metrics will be scrapped every 50s, here only `c`
 
@@ -150,7 +150,7 @@ blacklist:
    # Don't scrape us
    - com:criteo:nosql:cassandra:exporter:.*
 
-maxScrapFrequencyInSec:
+maxScrapeFrequencyInSec:
   50:
     - .*
 
