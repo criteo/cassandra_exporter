@@ -46,7 +46,7 @@ blacklist:
    # Don't scrap us
    - com:criteo:nosql:cassandra:exporter:.*
 
-maxScrapFrequencyInSec:
+maxScrapeFrequencyInSec:
   50:
     - .*
 
