@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
+import java.util.regex.Pattern;
 
 public final class Config {
 
@@ -23,6 +24,7 @@ public final class Config {
     private String user;
     private String password;
     private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
+    private Pattern additionalLabelsFromEnvvars;
 
     public static Optional<Config> fromFile(String filePath) {
         Logger logger = LoggerFactory.getLogger(Config.class);
@@ -70,5 +72,7 @@ public final class Config {
     public boolean getSSL() {
         return ssl;
     }
+
+    public Optional<Pattern> getAdditionalLabelsFromEnvvars() { return additionalLabelsFromEnvvars == null ? Optional.empty() : Optional.of(additionalLabelsFromEnvvars); }
 }
 

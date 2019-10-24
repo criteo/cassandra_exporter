@@ -115,6 +115,13 @@ user:
 password:
 listenAddress: 0.0.0.0
 listenPort: 8080
+# Regular expression to match environment variables that will be added
+# as labels to all data points. The name of the label will be either
+# $1 from the regex below, or the entire environment variable name if no match groups are defined
+#
+# Example:
+# additionalLabelsFromEnvvars: "^ADDL\_(.*)$"
+additionalLabelsFromEnvvars:
 blacklist:
    # Unaccessible metrics (not enough privilege)
    - java:lang:memorypool:.*usagethreshold.*

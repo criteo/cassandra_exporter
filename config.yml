@@ -4,6 +4,13 @@ user:
 password:
 listenAddress: 0.0.0.0
 listenPort: 8080
+# Regular expression to match environment variable names that will be added
+# as labels to all data points. The name of the label will be either
+# $1 from the regex below, or the entire environment variable name if no match groups are defined
+#
+# Example:
+# additionalLabelsFromEnvvars: "^ADDL\_(.*)$"
+additionalLabelsFromEnvvars:
 blacklist:
    # To profile the duration of jmx call you can start the program with the following options
    # > java -Dorg.slf4j.simpleLogger.defaultLogLevel=trace -jar cassandra_exporter.jar config.yml --oneshot
