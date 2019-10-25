@@ -109,7 +109,7 @@ public class JmxScraper {
             int pos = metricName.indexOf(':', pathLength);
             String keyspaceName = metricName.substring(pathLength, pos);
 
-            stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName,
+            this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName,
                     nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName}, this.additionalLabelValues)).set(value);
             return;
         }
@@ -123,7 +123,7 @@ public class JmxScraper {
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
             if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-                stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
+                this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
                 return;
             }
         }
@@ -137,17 +137,17 @@ public class JmxScraper {
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
             if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-                stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
+                this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
                 return;
             }
         }
 
-        stats.labels(concat( new String[] { nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName}, additionalLabelValues)).set(value);
+        this.stats.labels(concat( new String[] { nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName}, additionalLabelValues)).set(value);
     }
 
     public void run(final boolean forever) throws Exception {
 
-        stats.clear();
+        this.stats.clear();
         try (JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
 
