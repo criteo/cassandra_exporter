@@ -336,8 +336,10 @@ public class JmxScraper {
         logger.trace("Scrapping took {}ms for {}", (System.currentTimeMillis() - start), mBeanInfo.metricName);
     }
 
-    private static <T> T[] concat(T[] a, T[] b) {
-        return (T[]) Stream.concat(Arrays.stream(a), Arrays.stream(b)).toArray();
+    public static <T> T[] concat(T[] a, T[] b) {
+        T[] finalArray = Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, finalArray, a.length, b.length);
+        return finalArray;
     }
 
     /**
