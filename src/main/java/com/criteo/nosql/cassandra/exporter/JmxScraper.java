@@ -23,11 +23,7 @@ import static java.util.stream.Collectors.toList;
 
 
 public class JmxScraper {
-    static final Gauge STATS = Gauge.build()
-            .name("cassandra_stats")
-            .help("node stats")
-            .labelNames("cluster", "datacenter", "keyspace", "table", "name")
-            .register();
+    private final Gauge stats;
     private static final Logger logger = LoggerFactory.getLogger(JmxScraper.class);
     private static final double[] offsetPercentiles = new double[]{0.5, 0.75, 0.95, 0.98, 0.99};
     private static final String metricSeparator = ":";
@@ -39,13 +35,22 @@ public class JmxScraper {
     private final TreeMap<Integer, List<Pattern>> scrapFrequencies;
     private final Map<Integer, Long> lastScrapes;
     private final Map<String, Object> jmxEnv;
+    private final String[] additionalLabelValues;
 
 
-    public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies) {
+    public JmxScraper(String jmxUrl, Optional<String> username, Optional<String> password, boolean ssl, List<String> blacklist, SortedMap<Integer, List<String>> scrapFrequencies, Map<String, String> additionalLabels) {
         this.jmxUrl = jmxUrl;
         this.blacklist = blacklist.stream().map(Pattern::compile).collect(toList());
         this.scrapFrequencies = new TreeMap<>();
         this.lastScrapes = new HashMap<>(scrapFrequencies.size());
+        String[] additionalLabelKeys = additionalLabels.keySet().stream().toArray(String[]::new);
+        this.additionalLabelValues = additionalLabels.values().stream().toArray(String[]::new);
+
+        this.stats = Gauge.build()
+                .name("cassandra_stats")
+                .help("node stats")
+                .labelNames(concat(new String[]{"cluster", "datacenter", "keyspace", "table", "name"}, additionalLabelKeys))
+                .register();
 
         scrapFrequencies.forEach((k, v) -> {
             this.scrapFrequencies.put(k * 1000, v.stream().map(Pattern::compile).collect(toList()));
@@ -97,15 +102,15 @@ public class JmxScraper {
         return result;
     }
 
-    private static void updateStats(NodeInfo nodeInfo, String metricName, Double value) {
+    private void updateStats(NodeInfo nodeInfo, String metricName, Double value) {
 
         if (metricName.startsWith("org:apache:cassandra:metrics:keyspace:")) {
             int pathLength = "org:apache:cassandra:metrics:keyspace:".length();
             int pos = metricName.indexOf(':', pathLength);
             String keyspaceName = metricName.substring(pathLength, pos);
 
-            STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName,
-                    nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName).set(value);
+            this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName,
+                    nodeInfo.keyspaces.contains(keyspaceName) ? keyspaceName : "", "", metricName}, this.additionalLabelValues)).set(value);
             return;
         }
 
@@ -118,7 +123,7 @@ public class JmxScraper {
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
             if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-                STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+                this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
                 return;
             }
         }
@@ -132,17 +137,17 @@ public class JmxScraper {
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
             if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-                STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName).set(value);
+                this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
                 return;
             }
         }
 
-        STATS.labels(nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName).set(value);
+        this.stats.labels(concat( new String[] { nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName}, additionalLabelValues)).set(value);
     }
 
     public void run(final boolean forever) throws Exception {
 
-        STATS.clear();
+        this.stats.clear();
         try (JMXConnector jmxc = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), jmxEnv)) {
             final MBeanServerConnection beanConn = jmxc.getMBeanServerConnection();
 
@@ -329,6 +334,12 @@ public class JmxScraper {
                 break;
         }
         logger.trace("Scrapping took {}ms for {}", (System.currentTimeMillis() - start), mBeanInfo.metricName);
+    }
+
+    public static <T> T[] concat(T[] a, T[] b) {
+        T[] finalArray = Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, finalArray, a.length, b.length);
+        return finalArray;
     }
 
     /**
