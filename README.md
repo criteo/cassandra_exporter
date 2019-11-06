@@ -174,4 +174,4 @@ To get an idea on how to integrate Cassandra Exporter in Kubernetes, you can loo
 
 ## Grafana
 
-Dedicated dashboards can be [found here](https://github.com/criteo/cassandra_exporter/tree/grafana/grafana)
+Dedicated dashboards can be [found here](https://github.com/criteo/cassandra_exporter/tree/master/grafana)
