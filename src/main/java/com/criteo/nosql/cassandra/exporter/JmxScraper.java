@@ -312,10 +312,8 @@ public class JmxScraper {
                 //Most beans declared as Object are Double in disguise
                 if (first >= '0' && first <= '9') {
                     updateStats(nodeInfo, mBeanInfo.metricName, Double.valueOf(str));
-
-                    // https://books.google.fr/books?id=BvsVuph6ehMC&pg=PA82
-                    // EstimatedHistogram are object for JMX but are long[] behind
-                } else if (first == '{' || mBeanInfo.metricName == "org:apache:cassandra:metrics:compaction:pendingtasksbytablename:value") {
+                    
+                } else if (first == '{' && mBeanInfo.metricName.equalsIgnoreCase("org:apache:cassandra:metrics:compaction:pendingtasksbytablename:value")) {
                     HashMap<String, HashMap<String, Integer>> pendingTasks = (HashMap<String, HashMap<String, Integer>>) value;
                     for (String keyspace : pendingTasks.keySet()) {
                         for (String table : pendingTasks.get(keyspace).keySet()) {
@@ -325,7 +323,8 @@ public class JmxScraper {
                         }
                     }
 
-
+                    // https://books.google.fr/books?id=BvsVuph6ehMC&pg=PA82
+                    // EstimatedHistogram are object for JMX but are long[] behind
                 } else if (str.startsWith(long[].class.getName())) {
 
                     // This is ugly to redo the shouldScrap and metricName formating this late
