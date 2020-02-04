@@ -142,6 +142,21 @@ public class JmxScraper {
             }
         }
 
+
+        if (metricName.startsWith("org:apache:cassandra:metrics:compaction:pendingtasksbytablename:")) {
+            int pathLength = "org:apache:cassandra:metrics:compaction:pendingtasksbytablename:".length();
+            int keyspacePos = metricName.indexOf(':', pathLength);
+            int tablePos = metricName.indexOf(':', keyspacePos + 1);
+            String keyspaceName = metricName.substring(pathLength, keyspacePos);
+            String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
+
+            if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
+                this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
+                return;
+            }
+        }
+
+
         this.stats.labels(concat( new String[] { nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName}, additionalLabelValues)).set(value);
     }
 
@@ -297,6 +312,16 @@ public class JmxScraper {
                 //Most beans declared as Object are Double in disguise
                 if (first >= '0' && first <= '9') {
                     updateStats(nodeInfo, mBeanInfo.metricName, Double.valueOf(str));
+                    
+                } else if (first == '{' && mBeanInfo.metricName.equalsIgnoreCase("org:apache:cassandra:metrics:compaction:pendingtasksbytablename:value")) {
+                    HashMap<String, HashMap<String, Integer>> pendingTasks = (HashMap<String, HashMap<String, Integer>>) value;
+                    for (String keyspace : pendingTasks.keySet()) {
+                        for (String table : pendingTasks.get(keyspace).keySet()) {
+                            String labels = String.join(":", keyspace, table, "value");
+                            String metricName = mBeanInfo.metricName.replace("value", labels);
+                            updateStats(nodeInfo, metricName, pendingTasks.get(keyspace).get(table).doubleValue());
+                        }
+                    }
 
                     // https://books.google.fr/books?id=BvsVuph6ehMC&pg=PA82
                     // EstimatedHistogram are object for JMX but are long[] behind
