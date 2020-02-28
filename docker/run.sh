@@ -28,4 +28,4 @@ while ! nc -z $host $port; do
   sleep 1
 done
 
-/sbin/dumb-init /usr/bin/java ${JVM_OPTS} -jar /opt/cassandra_exporter/cassandra_exporter.jar /etc/cassandra_exporter/config.yml
+/sbin/dumb-init java ${JVM_OPTS} -jar /opt/cassandra_exporter/cassandra_exporter.jar /etc/cassandra_exporter/config.yml
