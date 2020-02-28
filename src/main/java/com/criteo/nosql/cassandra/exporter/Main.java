@@ -4,6 +4,7 @@ import io.prometheus.client.exporter.HTTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,7 +27,11 @@ public class Main {
 
         Config cfg = cfgO.get();
         boolean isOneShot = Arrays.asList(args).contains("--oneshot");
-        HTTPServer server = new HTTPServer(cfg.getListenAddress(), cfg.getListenPort());
+        start(cfg, isOneShot);
+    }
+
+	public static void start(Config cfg, boolean isOneShot) throws IOException, Exception {
+		HTTPServer server = new HTTPServer(cfg.getListenAddress(), cfg.getListenPort());
         JmxScraper scrapper = new JmxScraper(String.format("service:jmx:rmi:///jndi/rmi://%s/jmxrmi", cfg.getHost()), cfg.getUser(), cfg.getPassword(), cfg.getSSL(), cfg.getBlacklist(), cfg.getMaxScrapeFrequencyInSec(), findAdditionalLabelsInEnvironment(System.getenv(), cfg.getAdditionalLabelsFromEnvvars()));
 
         if (isOneShot) {
@@ -47,7 +52,7 @@ public class Main {
                 System.exit(0);
             }
         }
-    }
+	}
 
     public static Map<String, String> findAdditionalLabelsInEnvironment(Map<String, String> environment, Optional<Pattern> matchNames) {
         if (matchNames.isPresent()) {
