@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.regex.Pattern;
@@ -23,7 +22,7 @@ public final class Config {
     private String listenAddress = "0.0.0.0";
     private String user;
     private String password;
-    private SortedMap<Integer, List<String>> maxScrapeFrequencyInSec;
+    private SortedMap<Integer, List<String>> maxScrapFrequencyInSec;
     private Pattern additionalLabelsFromEnvvars;
 
     public static Optional<Config> fromFile(String filePath) {
@@ -41,8 +40,8 @@ public final class Config {
         }
     }
 
-    public SortedMap<Integer, List<String>> getMaxScrapeFrequencyInSec() {
-        return maxScrapeFrequencyInSec;
+    public SortedMap<Integer, List<String>> getMaxScrapFrequencyInSec() {
+        return maxScrapFrequencyInSec;
     }
 
     public Optional<String> getUser() {

@@ -32,7 +32,7 @@ public class Main {
 
 	public static void start(Config cfg, boolean isOneShot) throws IOException, Exception {
 		HTTPServer server = new HTTPServer(cfg.getListenAddress(), cfg.getListenPort());
-        JmxScraper scrapper = new JmxScraper(String.format("service:jmx:rmi:///jndi/rmi://%s/jmxrmi", cfg.getHost()), cfg.getUser(), cfg.getPassword(), cfg.getSSL(), cfg.getBlacklist(), cfg.getMaxScrapeFrequencyInSec(), findAdditionalLabelsInEnvironment(System.getenv(), cfg.getAdditionalLabelsFromEnvvars()));
+        JmxScraper scrapper = new JmxScraper(String.format("service:jmx:rmi:///jndi/rmi://%s/jmxrmi", cfg.getHost()), cfg.getUser(), cfg.getPassword(), cfg.getSSL(), cfg.getBlacklist(), cfg.getMaxScrapFrequencyInSec(), findAdditionalLabelsInEnvironment(System.getenv(), cfg.getAdditionalLabelsFromEnvvars()));
 
         if (isOneShot) {
             scrapper.run(false);
