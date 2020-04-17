@@ -50,6 +50,9 @@ blacklist:
    # Should we export metrics for system keyspaces/tables ?
    - org:apache:cassandra:metrics:[^:]+:system[^:]*:.*
 
+   # Logback doesn't have any useful metrics
+   - ch:qos:logback:.*
+
    # Don't scrap us
    - com:criteo:nosql:cassandra:exporter:.*
 

@@ -291,6 +291,10 @@ public class JmxScraper {
                 updateStats(nodeInfo, mBeanInfo.metricName, ((Boolean) value) ? 1.0 : 0.0);
                 break;
 
+            case "java.util.List":
+                updateStats(nodeInfo, mBeanInfo.metricName, Double.valueOf(((List) value).size()));
+                break;
+
             case "javax.management.openmbean.CompositeData":
                 CompositeData data = ((CompositeData) value);
                 CompositeType types = ((CompositeData) value).getCompositeType();
