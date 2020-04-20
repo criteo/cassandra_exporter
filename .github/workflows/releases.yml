@@ -35,4 +35,4 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         dockerfile: docker/Dockerfile 
-        tags: "latest,${GITHUB_REF##*/}"
+        tag_names: true
