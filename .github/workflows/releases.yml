@@ -33,7 +33,7 @@ jobs:
       run: echo ::set-env name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
       
     - name: Publish to Registry
-      uses: HurricanKai/Publish-Docker-Github-Action@master
+      uses: elgohr/Publish-Docker-Github-Action@2.14
       with:
         name: criteord/cassandra_exporter
         username: ${{ secrets.DOCKER_USERNAME }}
