@@ -27,3 +27,12 @@ jobs:
         artifacts: "build/libs/*.jar"
         bodyFile: ""
         token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish to Registry
+      uses: HurricanKai/Publish-Docker-Github-Action@master
+      with:
+        name: criteord/cassandra_exporter
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        dockerfile: docker/Dockerfile 
+        tag: true  
