@@ -1,6 +1,6 @@
 FROM openjdk:11-jre-slim-buster
 
-ARG EXPORTER_VERSION=2.3.4
+ARG EXPORTER_VERSION=2.3.5
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		netcat \
