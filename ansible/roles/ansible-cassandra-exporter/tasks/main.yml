@@ -51,7 +51,7 @@
   lineinfile:
     regexp: "^listenAddress"
     dest:  "{{ cassandra_exporter_config_dir }}/config.yml"
-    line: "listenAddress: {{ cassandra_listen_address }}"
+    line: "listenAddress: {{ cassandra_exporter_listen_address }}"
   notify:
     - restart cassandra exporter
 
@@ -59,7 +59,7 @@
   lineinfile:
     regexp: "^listenPort"
     dest:  "{{ cassandra_exporter_config_dir }}/config.yml"
-    line: "listenPort: {{ cassandra_listen_port }}"
+    line: "listenPort: {{ cassandra_exporter_listen_port }}"
   notify:
     - restart cassandra exporter
 
