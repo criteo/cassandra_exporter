@@ -4,7 +4,7 @@ cassandra_exporter_version: 2.3.5
 
 cassandra_exporter_listen_address: "0.0.0.0"
 cassandra_exporter_listen_port: "8080"
-cassandra_exporter_binary_url: 'https://github.com/criteo/cassandra_exporter/releases/download/{{cassandra_exporter_version}}/cassandra_exporter-{{cassandra_exporter_version}}-all.jar'
+cassandra_exporter_binary_url: 'https://github.com/criteo/cassandra_exporter/releases/download/{{cassandra_exporter_version}}/cassandra_exporter-{{cassandra_exporter_version}}.jar'
 cassandra_exporter_config_url: 'https://raw.githubusercontent.com/criteo/cassandra_exporter/{{cassandra_exporter_version}}/config.yml'
 
 cassandra_exporter_user: cassandra-exp
