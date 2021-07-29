@@ -21,6 +21,6 @@ RUN chmod g+wrX,o+rwX -R /etc/cassandra_exporter
 USER 1000
 
 ADD config.yml /etc/cassandra_exporter/
-ADD docker/run.sh /
+ADD run.sh /
 
 CMD ["/sbin/dumb-init", "/bin/bash", "/run.sh"]
