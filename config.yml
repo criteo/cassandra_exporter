@@ -22,6 +22,16 @@ blacklist:
    # Unaccessible metrics (not enough privilege)
    - java:lang:memorypool:.*usagethreshold.*
 
+   # Unaccessible metrics Java 11 (not enough privilege)
+   - java:lang:runtime:bootclasspath
+   - org:apache:cassandra:net:messagingservice:backpressureperhost   
+   - .*:memorypool:collectionusagethreshold
+   - .*:memorypool:collectionusagethresholdexceeded
+   - .*:memorypool:collectionusagethresholdcount
+   - .*:memorypool:usagethreshold
+   - .*:memorypool:usagethresholdcount
+   - .*:memorypool:usagethresholdexceeded
+
    # Leaf attributes not interesting for us but that are presents in many path
    - .*:999thpercentile
    - .*:95thpercentile
