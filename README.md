@@ -175,6 +175,11 @@ You can pull an image directly from [Dockerhub](https://hub.docker.com/r/criteor
 docker pull criteord/cassandra_exporter:latest
 ```
 
+Run docker in read-only mode (/tmp must be mounted as tmpfs to authorize sed on the config.yml when using dedicated env variables)
+```
+docker run -e CASSANDRA_EXPORTER_CONFIG_host=localhost:7198 --read-only --tmpfs=/tmp criteord/cassandra_exporter:latest
+```
+
 ## Kubernetes
 
 To get an idea on how to integrate Cassandra Exporter in Kubernetes, you can look at [this helm Chart](https://github.com/MySocialApp/kubernetes-helm-chart-cassandra).
