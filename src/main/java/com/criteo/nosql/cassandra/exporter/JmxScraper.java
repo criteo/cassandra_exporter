@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
+import javax.management.RuntimeMBeanException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.remote.JMXConnector;
@@ -273,6 +274,9 @@ public class JmxScraper {
         try {
             value = beanConn.getAttribute(mBeanInfo.mBeanName, mBeanInfo.attribute.getName());
         } catch (Exception e) {
+            if (e instanceof RuntimeMBeanException && e.getCause() != null && e.getCause() instanceof UnsupportedOperationException) {
+                return;
+            }
             logger.error("Cannot get value for {} {}", mBeanInfo.metricName, mBeanInfo.attribute.getName(), e);
         }
         if (value == null) {
