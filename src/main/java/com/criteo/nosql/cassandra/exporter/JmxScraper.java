@@ -1,5 +1,6 @@
 package com.criteo.nosql.cassandra.exporter;
 
+import io.prometheus.client.Collector;
 import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,13 +153,31 @@ public class JmxScraper {
             String tableName = tablePos > 0 ? metricName.substring(keyspacePos + 1, tablePos) : "";
 
             if (nodeInfo.keyspaces.contains(keyspaceName) && nodeInfo.tables.contains(tableName)) {
-                this.stats.labels(concat(new String[] {nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
+                this.stats.labels(concat(new String[]{nodeInfo.clusterName, nodeInfo.datacenterName, keyspaceName, tableName, metricName}, additionalLabelValues)).set(value);
                 return;
             }
         }
 
 
-        this.stats.labels(concat( new String[] { nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName}, additionalLabelValues)).set(value);
+        this.stats.labels(concat(new String[]{nodeInfo.clusterName, nodeInfo.datacenterName, "", "", metricName}, additionalLabelValues)).set(value);
+    }
+
+    private Boolean shouldRemove(NodeInfo nodeInfo, Collector.MetricFamilySamples.Sample sample) {
+        String keyspace = sample.labelValues.get(2);
+        String table = sample.labelValues.get(3);
+        return (!"".equals(keyspace) && !nodeInfo.keyspaces.contains(keyspace)) || (!"".equals(table) && !nodeInfo.tables.contains(table));
+    }
+
+
+    /**
+     * Remove metrics for drop keyspaces/tables
+     */
+    private void removeMetrics(NodeInfo nodeInfo) {
+        this.stats.collect()
+                .stream()
+                .flatMap(metrics -> metrics.samples.stream())
+                .filter(sample -> shouldRemove(nodeInfo, sample))
+                .forEach(sample -> this.stats.remove(sample.labelValues.toArray(new String[0])));
     }
 
     public void run(final boolean forever) throws Exception {
@@ -184,6 +203,7 @@ public class JmxScraper {
                         .filter(m -> shouldScrap(m, now))
                         .forEach(mBean -> updateMetric(beanConn, mBean, nodeInfo.get()));
 
+                removeMetrics(nodeInfo.get());
 
                 lastScrapes.forEach((k, lastScrape) -> {
                     if (now - lastScrape >= k) lastScrapes.put(k, now);
