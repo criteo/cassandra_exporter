@@ -15,7 +15,7 @@ cp /etc/cassandra_exporter/config.yml /tmp/config.yml
 while IFS='=' read -r name value ; do
   if [[ $name == 'CASSANDRA_EXPORTER_CONFIG_'* ]]; then
     val="${!name}"
-    echo "$name $val"
+    if [[ $name == 'CASSANDRA_EXPORTER_CONFIG_password' ]]; then echo "$name ****"; else echo "$name $val"; fi
     field=$(echo $name | sed -r 's/CASSANDRA_EXPORTER_CONFIG_(.+)/\1/')
     sed -ri "s/^($field):.*/\1: $val/" "/tmp/config.yml"
   fi
