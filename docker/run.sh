@@ -24,7 +24,7 @@ done < <(env)
 host=$(grep -m1 'host:' /tmp/config.yml | cut -d ':' -f2)
 port=$(grep -m1 'host:' /tmp/config.yml | cut -d ':' -f3)
 
-while ! nc -z $host $port; do
+while ! nc -z "$host" "$port"; do
   echo "Waiting for Cassandra JMX to start on $host:$port"
   sleep 1
 done
